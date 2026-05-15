@@ -120,13 +120,7 @@ body {
   animation: csh-fade-up 0.5s ease-out both;
 }
 
-/* Tutorial spotlight */
-.csh-spotlight-mask {
-  pointer-events: none;
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-}
+/* (Tutorial spotlight is built with positioned divs in Tutorial.tsx) */
 
 /* Print: clean one-pager for IC packets */
 @media print {
