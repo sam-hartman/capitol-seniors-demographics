@@ -154,7 +154,8 @@ export function StatsPanel({ data, loading, rings }: Props) {
       {data && !loading && (
         <div className="px-6 py-4 border-t border-csh-line bg-csh-parchment text-xs text-csh-ink-soft flex items-center justify-between gap-4">
           <span>
-            Source: U.S. Census Bureau, ACS {data.meta.acsYear} 5-Year Estimates
+            Source: U.S. Census Bureau · {data.meta.acsRelease}
+            {data.meta.acsYears ? ` (${data.meta.acsYears})` : ""}
           </span>
           <span>{data.meta.tractsConsidered} tracts evaluated</span>
         </div>
