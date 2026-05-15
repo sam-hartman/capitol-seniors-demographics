@@ -1,0 +1,121 @@
+@import "tailwindcss";
+
+:root {
+  /* Capitol Seniors Housing brand palette — derived from logo + site CSS */
+  --csh-navy: #1a3a5c;
+  --csh-navy-deep: #0f2540;
+  --csh-navy-soft: #2c5380;
+  --csh-cream: #f5f1e8;
+  --csh-parchment: #faf7f0;
+  --csh-gold: #b8924a;
+  --csh-gold-soft: #d4b277;
+  --csh-stone: #e8e2d3;
+  --csh-ink: #1c1c1c;
+  --csh-ink-soft: #4a4a4a;
+  --csh-line: #d8d2c4;
+
+  --background: var(--csh-parchment);
+  --foreground: var(--csh-ink);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-csh-navy: var(--csh-navy);
+  --color-csh-navy-deep: var(--csh-navy-deep);
+  --color-csh-navy-soft: var(--csh-navy-soft);
+  --color-csh-cream: var(--csh-cream);
+  --color-csh-parchment: var(--csh-parchment);
+  --color-csh-gold: var(--csh-gold);
+  --color-csh-gold-soft: var(--csh-gold-soft);
+  --color-csh-stone: var(--csh-stone);
+  --color-csh-ink: var(--csh-ink);
+  --color-csh-ink-soft: var(--csh-ink-soft);
+  --color-csh-line: var(--csh-line);
+  --font-sans: var(--font-geist-sans);
+  --font-serif: var(--font-fraunces);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), -apple-system, system-ui, sans-serif;
+  font-feature-settings: "ss01", "cv11";
+}
+
+/* Subtle paper grain background */
+.csh-paper {
+  background-color: var(--csh-parchment);
+  background-image:
+    radial-gradient(at 20% 10%, rgba(184, 146, 74, 0.04) 0, transparent 45%),
+    radial-gradient(at 80% 90%, rgba(26, 58, 92, 0.05) 0, transparent 45%);
+}
+
+/* Letterpress label */
+.csh-eyebrow {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--csh-gold);
+}
+
+.csh-display {
+  font-family: var(--font-serif), Georgia, serif;
+  font-feature-settings: "ss01", "lnum";
+  letter-spacing: -0.02em;
+}
+
+/* Hairline divider */
+.csh-rule {
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--csh-line) 15%,
+    var(--csh-line) 85%,
+    transparent
+  );
+}
+
+/* Map container styling */
+.leaflet-container {
+  background: #e9e4d6 !important;
+  font-family: var(--font-sans), system-ui, sans-serif !important;
+}
+.leaflet-control-attribution {
+  background: rgba(250, 247, 240, 0.85) !important;
+  font-size: 10px !important;
+}
+.leaflet-tile-pane {
+  filter: saturate(0.7) brightness(1.02) contrast(0.95);
+}
+
+/* Custom map pin pulse */
+@keyframes csh-pulse {
+  0% { transform: scale(1); opacity: 0.7; }
+  70% { transform: scale(2.5); opacity: 0; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+.csh-pin-pulse {
+  animation: csh-pulse 2.4s ease-out infinite;
+}
+
+/* Number ticker */
+@keyframes csh-fade-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.csh-fade-up {
+  animation: csh-fade-up 0.5s ease-out both;
+}
+
+/* Tutorial spotlight */
+.csh-spotlight-mask {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+}
