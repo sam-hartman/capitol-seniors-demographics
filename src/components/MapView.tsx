@@ -1,27 +1,29 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import L from "leaflet";
 import { MapPin } from "lucide-react";
+import { haversineMiles } from "@/lib/geo";
 
 interface Props {
   center: { lat: number; lon: number } | null;
   label?: string | null;
   ringMiles?: number[];
+  onRelocate?: (latlon: { lat: number; lon: number }) => void;
+  ringColors?: string[];
+  ringFills?: string[];
 }
 
-const RING_COLORS = [
-  { stroke: "#0f2540", fill: "rgba(15, 37, 64, 0.08)" },
-  { stroke: "#1a3a5c", fill: "rgba(26, 58, 92, 0.05)" },
-  { stroke: "#b8924a", fill: "rgba(184, 146, 74, 0.04)" },
+const DEFAULT_RING_COLORS = ["#0f2540", "#b8924a", "#5a7a82"];
+const DEFAULT_RING_FILLS = [
+  "rgba(15,37,64,0.14)",
+  "rgba(184,146,74,0.10)",
+  "rgba(90,122,130,0.10)",
 ];
 
 const MILES_TO_METERS = 1609.344;
 
-// Lucide MapPin viewBox is 24x24 with the tip at roughly (12, 22). At size=36
-// that scales the tip to (18, 33). We anchor the icon at that exact pixel so
-// the tip sits on the geographic point.
 const PIN_SIZE = 36;
 const PIN_ANCHOR_X = 18;
 const PIN_ANCHOR_Y = 33;
@@ -39,17 +41,29 @@ const PIN_SVG = renderToStaticMarkup(
   />
 );
 
-// Pulse circle is centered on the icon's anchor (the tip of the pin).
 const PIN_HTML = `
 <div style="position: relative; width: ${PIN_SIZE}px; height: ${PIN_SIZE}px;">
   <div style="position: absolute; left: ${PIN_ANCHOR_X}px; top: ${PIN_ANCHOR_Y}px; transform: translate(-50%, -50%); width: 18px; height: 18px; border-radius: 50%; background: rgba(184, 146, 74, 0.5); pointer-events: none;" class="csh-pin-pulse"></div>
   ${PIN_SVG}
 </div>`;
 
-export default function MapView({ center, label, ringMiles = [1, 3, 5] }: Props) {
+export default function MapView({
+  center,
+  label,
+  ringMiles = [1, 3, 5],
+  onRelocate,
+  ringColors = DEFAULT_RING_COLORS,
+  ringFills = DEFAULT_RING_FILLS,
+}: Props) {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const layerGroupRef = useRef<L.LayerGroup | null>(null);
+  const onRelocateRef = useRef(onRelocate);
+  const [hoverDistance, setHoverDistance] = useState<number | null>(null);
+
+  useEffect(() => {
+    onRelocateRef.current = onRelocate;
+  }, [onRelocate]);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -77,11 +91,45 @@ export default function MapView({ center, label, ringMiles = [1, 3, 5] }: Props)
     layerGroupRef.current = L.layerGroup().addTo(map);
     mapRef.current = map;
 
+    map.on("click", (e: L.LeafletMouseEvent) => {
+      onRelocateRef.current?.({ lat: e.latlng.lat, lon: e.latlng.lng });
+    });
+
     return () => {
       map.remove();
       mapRef.current = null;
     };
   }, []);
+
+  // Hover distance readout, only when a center exists.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (!center) {
+      setHoverDistance(null);
+      return;
+    }
+    function onMove(e: L.LeafletMouseEvent) {
+      setHoverDistance(
+        haversineMiles(center!, { lat: e.latlng.lat, lon: e.latlng.lng })
+      );
+    }
+    function onOut() {
+      setHoverDistance(null);
+    }
+    map.on("mousemove", onMove);
+    map.on("mouseout", onOut);
+    return () => {
+      map.off("mousemove", onMove);
+      map.off("mouseout", onOut);
+    };
+  }, [center]);
+
+  // Crosshair cursor when relocating is enabled.
+  useEffect(() => {
+    if (!containerRef.current) return;
+    containerRef.current.style.cursor = onRelocate ? "crosshair" : "";
+  }, [onRelocate]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -95,15 +143,17 @@ export default function MapView({ center, label, ringMiles = [1, 3, 5] }: Props)
     const sortedRings = [...ringMiles].sort((a, b) => b - a);
     sortedRings.forEach((mile, i) => {
       const colorIdx = ringMiles.indexOf(mile);
-      const color = RING_COLORS[colorIdx % RING_COLORS.length];
+      const stroke = ringColors[colorIdx % ringColors.length];
+      const fill = ringFills[colorIdx % ringFills.length];
       L.circle(latlng, {
         radius: mile * MILES_TO_METERS,
-        color: color.stroke,
-        weight: 1.4,
-        fillColor: color.fill,
+        color: stroke,
+        weight: 1.6,
+        fillColor: fill,
         fillOpacity: 1,
-        opacity: 0.85,
+        opacity: 0.9,
         dashArray: i === 0 ? "4 4" : undefined,
+        interactive: false,
       }).addTo(group);
     });
 
@@ -125,14 +175,36 @@ export default function MapView({ center, label, ringMiles = [1, 3, 5] }: Props)
     const largest = Math.max(...ringMiles);
     const bounds = L.latLng(latlng).toBounds(largest * MILES_TO_METERS * 2.4);
     map.flyToBounds(bounds, { duration: 0.8, padding: [20, 20] });
-  }, [center, label, ringMiles]);
+  }, [center, label, ringMiles, ringColors, ringFills]);
 
   return (
-    <div
-      ref={containerRef}
-      data-tutorial="map"
-      className="w-full h-full"
-      style={{ minHeight: 360 }}
-    />
+    <div className="relative w-full h-full">
+      <div
+        ref={containerRef}
+        data-tutorial="map"
+        className="w-full h-full"
+        style={{ minHeight: 360 }}
+      />
+      {center && (
+        <div className="pointer-events-none absolute top-2 left-2 z-[400] flex flex-col gap-1.5">
+          {hoverDistance != null && (
+            <div className="bg-white/95 border border-csh-line shadow-sm px-2.5 py-1 text-[12px] tabular-nums text-csh-navy">
+              <span className="text-csh-ink-soft mr-1">cursor</span>
+              <span className="font-semibold">
+                {hoverDistance < 0.1
+                  ? `${(hoverDistance * 5280).toFixed(0)} ft`
+                  : `${hoverDistance.toFixed(2)} mi`}
+              </span>
+              <span className="text-csh-ink-soft ml-1">from site</span>
+            </div>
+          )}
+          {onRelocate && (
+            <div className="bg-csh-navy/95 text-csh-cream px-2.5 py-1 text-[11px] uppercase tracking-wider">
+              Click map to move site
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

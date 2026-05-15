@@ -16,11 +16,12 @@ const MapView = dynamic(() => import("./MapView"), {
   loading: () => <div className="w-full h-full bg-csh-stone/40 animate-pulse" />,
 });
 
-const RING_TICK_COLORS = ["#0f2540", "#1a3a5c", "#b8924a"];
-const RING_FILL_COLORS = [
-  "rgba(15,37,64,0.12)",
-  "rgba(26,58,92,0.08)",
-  "rgba(184,146,74,0.08)",
+// Three visually distinct hues — navy / gold / slate — each with a matching fill.
+export const RING_TICK_COLORS = ["#0f2540", "#b8924a", "#5a7a82"];
+export const RING_FILL_COLORS = [
+  "rgba(15,37,64,0.14)",
+  "rgba(184,146,74,0.10)",
+  "rgba(90,122,130,0.10)",
 ];
 
 const PRESETS: Array<GeocodeResult & { tag: string }> = [
@@ -52,7 +53,6 @@ interface Props {
 }
 
 const DEFAULT_RINGS = [1, 3, 5];
-const TUTORIAL_KEY = "csh-tutorial-v1-seen";
 
 export function DemographicsApp({
   initialAddress,
@@ -74,27 +74,6 @@ export function DemographicsApp({
   const [error, setError] = useState<string | null>(null);
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-
-  // Show the tutorial automatically on first visit only.
-  useEffect(() => {
-    try {
-      if (!localStorage.getItem(TUTORIAL_KEY)) {
-        const t = window.setTimeout(() => setTutorialOpen(true), 600);
-        return () => clearTimeout(t);
-      }
-    } catch {
-      // localStorage unavailable (private mode) — quietly skip.
-    }
-  }, []);
-
-  function closeTutorial() {
-    setTutorialOpen(false);
-    try {
-      localStorage.setItem(TUTORIAL_KEY, String(Date.now()));
-    } catch {
-      // ignore
-    }
-  }
 
   // Fetch demographics whenever address or rings change.
   useEffect(() => {
@@ -195,7 +174,7 @@ export function DemographicsApp({
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Tutorial open={tutorialOpen} onClose={closeTutorial} />
+      <Tutorial open={tutorialOpen} onClose={() => setTutorialOpen(false)} />
 
       {/* Toast */}
       {toast && (
@@ -395,6 +374,35 @@ export function DemographicsApp({
                   center={location}
                   label={location?.label ?? null}
                   ringMiles={rings}
+                  ringColors={RING_TICK_COLORS}
+                  ringFills={RING_FILL_COLORS}
+                  onRelocate={
+                    hasLocation
+                      ? async ({ lat, lon }) => {
+                          // Optimistically place the pin; refine label asynchronously.
+                          setLocation({
+                            lat,
+                            lon,
+                            label: `Locating… ${lat.toFixed(4)}, ${lon.toFixed(4)}`,
+                          });
+                          try {
+                            const res = await fetch(
+                              `/api/reverse-geocode?lat=${lat}&lon=${lon}`
+                            );
+                            const json = await res.json();
+                            if (json.success && json.data?.label) {
+                              setLocation({
+                                lat,
+                                lon,
+                                label: json.data.label,
+                              });
+                            }
+                          } catch {
+                            // keep the optimistic label
+                          }
+                        }
+                      : undefined
+                  }
                 />
               </div>
               {/* Ring legend */}
