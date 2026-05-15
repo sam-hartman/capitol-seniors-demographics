@@ -6,23 +6,44 @@ const TIGERWEB_TRACTS =
   "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Tracts_Blocks/MapServer/0/query";
 
 const CENSUS_REPORTER_BASE = "https://api.censusreporter.org/1.0/data/show/latest";
+const ACS_YEAR = 2024;
+const ACS_BASE = `https://api.census.gov/data/${ACS_YEAR}/acs/acs5`;
 
 export const DEFAULT_RING_MILES = [1, 3, 5] as const;
 
 // Census table IDs requested
 const TABLES = ["B25077", "B19013", "B01003", "B25007", "B01001"] as const;
 
-// Variable IDs we extract (Census Reporter format: no _E suffix, no underscore)
+// Direct Census API uses underscore + _E suffix; Census Reporter strips both.
+const ACS_VARS_RAW = [
+  "B25077_001E",
+  "B19013_001E",
+  "B01003_001E",
+  "B25007_006E",
+  "B25007_007E",
+  "B25007_016E",
+  "B25007_017E",
+  "B01001_023E",
+  "B01001_024E",
+  "B01001_025E",
+  "B01001_047E",
+  "B01001_048E",
+  "B01001_049E",
+];
+
+// Normalised key (no underscore, no _E) — used internally + matches Census Reporter shape.
+function normVar(s: string): string {
+  return s.replace(/_/g, "").replace(/E$/, "");
+}
+
 const VARS = {
   homeValue: "B25077001",
   income: "B19013001",
   population: "B01003001",
-  // Households 45-64 (tenure by age of householder)
   hhOwn4554: "B25007006",
   hhOwn5564: "B25007007",
   hhRent4554: "B25007016",
   hhRent5564: "B25007017",
-  // Population 75+ (sex by age)
   m7579: "B01001023",
   m8084: "B01001024",
   m85: "B01001025",
@@ -120,11 +141,50 @@ interface TractAcs {
   releaseYears?: string;
 }
 
-async function fetchAcsForCounty(
+async function fetchAcsDirect(
+  state: string,
+  county: string,
+  apiKey: string
+): Promise<{ tracts: TractAcs[]; release?: { name: string; years: string } }> {
+  const url = `${ACS_BASE}?get=${ACS_VARS_RAW.join(",")}&for=tract:*&in=state:${state}+county:${county}&key=${apiKey}`;
+  const res = await fetch(url, {
+    headers: { "User-Agent": USER_AGENT, Accept: "application/json" },
+    next: { revalidate: 86400 },
+    redirect: "manual",
+  });
+  if (res.status === 302) throw new Error("Census API key invalid or rejected");
+  if (!res.ok) throw new Error(`Census ACS ${res.status}`);
+
+  const rows = (await res.json()) as string[][];
+  if (!rows || rows.length < 2) return { tracts: [] };
+  const headers = rows[0];
+  const idx = (k: string) => headers.indexOf(k);
+  const stateIdx = idx("state");
+  const countyIdx = idx("county");
+  const tractIdx = idx("tract");
+
+  const tracts: TractAcs[] = rows.slice(1).map((row) => {
+    const geoid = `${row[stateIdx]}${row[countyIdx]}${row[tractIdx]}`;
+    const values: Record<string, number | null> = {};
+    for (const v of ACS_VARS_RAW) {
+      const raw = row[idx(v)];
+      const num = raw == null ? null : Number(raw);
+      const cleaned = num != null && Number.isFinite(num) && num >= 0 ? num : null;
+      values[normVar(v)] = cleaned;
+    }
+    return { geoid, values };
+  });
+
+  return {
+    tracts,
+    release: { name: `ACS ${ACS_YEAR} 5-year`, years: `${ACS_YEAR - 4}-${ACS_YEAR}` },
+  };
+}
+
+async function fetchAcsCensusReporter(
   state: string,
   county: string
 ): Promise<{ tracts: TractAcs[]; release?: { name: string; years: string } }> {
-  // Census Reporter: all tracts in a county = "140|05000US{state}{county}"
   const geoIds = `140|05000US${state}${county}`;
   const url = `${CENSUS_REPORTER_BASE}?table_ids=${TABLES.join(",")}&geo_ids=${encodeURIComponent(geoIds)}`;
   const data = await fetchJson<CensusReporterResponse>(url);
@@ -134,11 +194,9 @@ async function fetchAcsForCounty(
     : undefined;
 
   const tracts: TractAcs[] = Object.entries(data.data ?? {}).map(([geoIdKey, tables]) => {
-    // geoIdKey: "14000US11001000201" → tract GEOID = "11001000201"
     const tractGeoid = geoIdKey.replace(/^14000US/, "");
     const values: Record<string, number | null> = {};
-    for (const [tableId, table] of Object.entries(tables)) {
-      void tableId;
+    for (const table of Object.values(tables)) {
       for (const [varKey, val] of Object.entries(table.estimate ?? {})) {
         const num = typeof val === "number" ? val : val == null ? null : Number(val);
         values[varKey] = Number.isFinite(num as number) && (num as number) >= 0 ? (num as number) : null;
@@ -148,6 +206,25 @@ async function fetchAcsForCounty(
   });
 
   return { tracts, release };
+}
+
+async function fetchAcsForCounty(
+  state: string,
+  county: string
+): Promise<{ tracts: TractAcs[]; release?: { name: string; years: string } }> {
+  const apiKey = process.env.CENSUS_API_KEY;
+  if (apiKey) {
+    try {
+      return await fetchAcsDirect(state, county, apiKey);
+    } catch (err) {
+      // Fall through to Census Reporter on direct API failure
+      console.warn(
+        `Direct Census API failed for ${state}/${county}, falling back to Census Reporter:`,
+        err instanceof Error ? err.message : err
+      );
+    }
+  }
+  return fetchAcsCensusReporter(state, county);
 }
 
 export interface RingMetrics {
