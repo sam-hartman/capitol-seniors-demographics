@@ -7,6 +7,7 @@ import { SearchBar, type GeocodeResult } from "./SearchBar";
 import { StatsPanel } from "./StatsPanel";
 import { Tutorial } from "./Tutorial";
 import { buildCsv, csvFilenameFor, downloadCsv } from "@/lib/csv";
+import { RING_STROKES, RING_FILLS } from "@/lib/ring-colors";
 import type { DemographicsResult } from "@/lib/census";
 
 const RING_OPTIONS = [0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4, 5, 7, 10, 15, 20, 25];
@@ -16,13 +17,6 @@ const MapView = dynamic(() => import("./MapView"), {
   loading: () => <div className="w-full h-full bg-csh-stone/40 animate-pulse" />,
 });
 
-// Three visually distinct hues — navy / gold / slate — each with a matching fill.
-export const RING_TICK_COLORS = ["#0f2540", "#b8924a", "#5a7a82"];
-export const RING_FILL_COLORS = [
-  "rgba(15,37,64,0.14)",
-  "rgba(184,146,74,0.10)",
-  "rgba(90,122,130,0.10)",
-];
 
 const PRESETS: Array<GeocodeResult & { tag: string }> = [
   {
@@ -374,8 +368,8 @@ export function DemographicsApp({
                   center={location}
                   label={location?.label ?? null}
                   ringMiles={rings}
-                  ringColors={RING_TICK_COLORS}
-                  ringFills={RING_FILL_COLORS}
+                  ringColors={RING_STROKES}
+                  ringFills={RING_FILLS}
                   onRelocate={
                     hasLocation
                       ? async ({ lat, lon }) => {
@@ -413,8 +407,8 @@ export function DemographicsApp({
                       <span
                         className="inline-block w-3 h-3 rounded-full border"
                         style={{
-                          borderColor: RING_TICK_COLORS[i % 3],
-                          background: RING_FILL_COLORS[i % 3],
+                          borderColor: RING_STROKES[i % 3],
+                          background: RING_FILLS[i % 3],
                         }}
                       />
                       <span className="text-csh-ink-soft tabular-nums">{m} mi</span>

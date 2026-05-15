@@ -1,6 +1,7 @@
 "use client";
 
 import { Home, Wallet, Users, UsersRound, Accessibility } from "lucide-react";
+import { RING_STROKES } from "@/lib/ring-colors";
 import type { DemographicsResult } from "@/lib/census";
 
 interface Props {
@@ -11,8 +12,6 @@ interface Props {
   ringOptions: number[];
   loadingCaption?: string | null;
 }
-
-const RING_TICK_COLORS = ["#0f2540", "#1a3a5c", "#b8924a"];
 
 const METRICS = [
   {
@@ -95,8 +94,8 @@ function RingHeaderSelect({
   return (
     <div className="flex items-center justify-end gap-2">
       <span
-        className="inline-block w-3 h-3 rounded-full flex-shrink-0"
-        style={{ backgroundColor: RING_TICK_COLORS[index % 3] }}
+        className="inline-block w-3 h-3 rounded-full flex-shrink-0 ring-2 ring-white"
+        style={{ backgroundColor: RING_STROKES[index % RING_STROKES.length] }}
       />
       <div className="relative">
         <select

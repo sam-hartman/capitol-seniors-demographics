@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import L from "leaflet";
 import { MapPin } from "lucide-react";
 import { haversineMiles } from "@/lib/geo";
+import { RING_STROKES, RING_FILLS } from "@/lib/ring-colors";
 
 interface Props {
   center: { lat: number; lon: number } | null;
@@ -14,13 +15,6 @@ interface Props {
   ringColors?: string[];
   ringFills?: string[];
 }
-
-const DEFAULT_RING_COLORS = ["#0f2540", "#b8924a", "#5a7a82"];
-const DEFAULT_RING_FILLS = [
-  "rgba(15,37,64,0.14)",
-  "rgba(184,146,74,0.10)",
-  "rgba(90,122,130,0.10)",
-];
 
 const MILES_TO_METERS = 1609.344;
 
@@ -52,8 +46,8 @@ export default function MapView({
   label,
   ringMiles = [1, 3, 5],
   onRelocate,
-  ringColors = DEFAULT_RING_COLORS,
-  ringFills = DEFAULT_RING_FILLS,
+  ringColors = RING_STROKES,
+  ringFills = RING_FILLS,
 }: Props) {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);

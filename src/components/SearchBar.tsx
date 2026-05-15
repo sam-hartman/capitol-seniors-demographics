@@ -33,6 +33,18 @@ const STATE_ABBR: Record<string, string> = {
 };
 
 export function simplifyLabel(label: string): string {
+  // Photon labels already arrive as "Head · City, StateName" — abbreviate the state.
+  if (label.includes(" · ")) {
+    const [head, tail] = label.split(" · ");
+    const m = tail?.match(/^(.+),\s*(.+)$/);
+    if (m) {
+      const [, city, state] = m;
+      const abbr = STATE_ABBR[state.trim()] ?? state.trim();
+      return `${head} · ${city.trim()}, ${abbr}`;
+    }
+    return label;
+  }
+  // Fallback for Nominatim-style comma strings.
   const parts = label.split(",").map((p) => p.trim());
   if (parts.length < 3) return label;
   const head = parts[0];
@@ -50,7 +62,7 @@ export function simplifyLabel(label: string): string {
   return head;
 }
 
-const DEBOUNCE_MS = 280;
+const DEBOUNCE_MS = 220;
 
 export function SearchBar({
   onSelect,
@@ -136,13 +148,16 @@ export function SearchBar({
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     const trimmed = query.trim();
-    if (trimmed.length < 3) {
+    if (trimmed.length < 2) {
       setResults([]);
       setOpen(false);
       setActiveIdx(-1);
       lastQueryRef.current = "";
       return;
     }
+    // Show the dropdown immediately with a 'Searching…' state so the user
+    // knows we're working on it, even before the network response lands.
+    setOpen(true);
     debounceRef.current = setTimeout(() => runSearch(trimmed), DEBOUNCE_MS);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -185,7 +200,7 @@ export function SearchBar({
 
   const padY = size === "lg" ? "py-4" : "py-3";
   const fontSize = size === "lg" ? "text-[17px]" : "text-[15px]";
-  const showSpinner = (searching || loading) && query.trim().length >= 3;
+  const showSpinner = (searching || loading) && query.trim().length >= 2;
 
   return (
     <div ref={wrapRef} className="relative w-full">
@@ -225,13 +240,18 @@ export function SearchBar({
         />
       </form>
 
-      {open && (results.length > 0 || error) && (
+      {(open && (results.length > 0 || error || searching)) && (
         <div
           id="csh-geocode-results"
           role="listbox"
           className="absolute z-30 left-0 right-0 mt-1 bg-white border border-csh-line shadow-[0_12px_32px_-12px_rgba(26,58,92,0.25)] max-h-[360px] overflow-y-auto"
         >
-          {error && results.length === 0 && (
+          {searching && results.length === 0 && (
+            <div className="px-4 py-3 text-sm text-csh-ink-soft italic">
+              Searching…
+            </div>
+          )}
+          {error && results.length === 0 && !searching && (
             <div className="px-4 py-3 text-sm text-csh-ink-soft">{error}</div>
           )}
           <ul className="divide-y divide-csh-line/60">
