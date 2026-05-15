@@ -1,31 +1,48 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { HelpCircle, Printer } from "lucide-react";
 import { SearchBar, type GeocodeResult } from "./SearchBar";
 import { StatsPanel } from "./StatsPanel";
 import { Tutorial } from "./Tutorial";
+import { RingControls } from "./RingControls";
 import type { DemographicsResult } from "@/lib/census";
 
 const MapView = dynamic(() => import("./MapView"), {
   ssr: false,
-  loading: () => (
-    <div className="w-full h-full bg-csh-stone/40 animate-pulse" />
-  ),
+  loading: () => <div className="w-full h-full bg-csh-stone/40 animate-pulse" />,
 });
+
+const RING_TICK_COLORS = ["#0f2540", "#1a3a5c", "#b8924a"];
+const RING_FILL_COLORS = [
+  "rgba(15,37,64,0.12)",
+  "rgba(26,58,92,0.08)",
+  "rgba(184,146,74,0.08)",
+];
 
 interface Props {
   initialAddress?: string;
   initialLat?: number;
   initialLon?: number;
+  initialRings?: number[];
 }
 
-export function DemographicsApp({ initialAddress, initialLat, initialLon }: Props) {
+const DEFAULT_RINGS = [1, 3, 5];
+
+export function DemographicsApp({
+  initialAddress,
+  initialLat,
+  initialLon,
+  initialRings,
+}: Props) {
   const [location, setLocation] = useState<GeocodeResult | null>(
     initialAddress && initialLat != null && initialLon != null
       ? { lat: initialLat, lon: initialLon, label: initialAddress }
       : null
+  );
+  const [rings, setRings] = useState<number[]>(
+    initialRings && initialRings.length === 3 ? initialRings : DEFAULT_RINGS
   );
   const [data, setData] = useState<DemographicsResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -37,8 +54,10 @@ export function DemographicsApp({ initialAddress, initialLat, initialLon }: Prop
     let cancelled = false;
     setLoading(true);
     setError(null);
-    setData(null);
-    fetch(`/api/demographics?lat=${location.lat}&lon=${location.lon}`)
+    const ringsParam = rings.join(",");
+    fetch(
+      `/api/demographics?lat=${location.lat}&lon=${location.lon}&rings=${ringsParam}`
+    )
       .then((r) => r.json())
       .then((json) => {
         if (cancelled) return;
@@ -46,6 +65,7 @@ export function DemographicsApp({ initialAddress, initialLat, initialLon }: Prop
           setData(json.data);
         } else {
           setError(json.error ?? "Failed to load demographics");
+          setData(null);
         }
       })
       .catch((err) => {
@@ -57,7 +77,7 @@ export function DemographicsApp({ initialAddress, initialLat, initialLon }: Prop
     return () => {
       cancelled = true;
     };
-  }, [location]);
+  }, [location, rings]);
 
   // Sync URL with selection
   useEffect(() => {
@@ -66,11 +86,10 @@ export function DemographicsApp({ initialAddress, initialLat, initialLon }: Prop
       addr: location.label,
       lat: String(location.lat),
       lon: String(location.lon),
+      rings: rings.join(","),
     });
     window.history.replaceState({}, "", `?${params.toString()}`);
-  }, [location]);
-
-  const ringMiles = useMemo(() => [1, 3, 5], []);
+  }, [location, rings]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -208,6 +227,25 @@ export function DemographicsApp({ initialAddress, initialLat, initialLon }: Prop
             </div>
           )}
 
+          {/* Ring controls */}
+          <div
+            data-tutorial="rings"
+            className="mb-6 flex flex-wrap items-center justify-between gap-4 border border-csh-line bg-white px-5 py-3.5"
+          >
+            <RingControls rings={rings} onChange={setRings} disabled={loading} />
+            <button
+              onClick={() => setRings(DEFAULT_RINGS)}
+              className="text-xs text-csh-ink-soft hover:text-csh-navy underline underline-offset-4 disabled:opacity-50"
+              disabled={
+                rings[0] === DEFAULT_RINGS[0] &&
+                rings[1] === DEFAULT_RINGS[1] &&
+                rings[2] === DEFAULT_RINGS[2]
+              }
+            >
+              Reset to 1 / 3 / 5
+            </button>
+          </div>
+
           <div className="grid lg:grid-cols-5 gap-6">
             {/* Map */}
             <div className="lg:col-span-2 border border-csh-line bg-white overflow-hidden">
@@ -223,38 +261,32 @@ export function DemographicsApp({ initialAddress, initialLat, initialLon }: Prop
                 <MapView
                   center={location}
                   label={location?.label ?? null}
-                  ringMiles={ringMiles}
+                  ringMiles={rings}
                 />
               </div>
               {/* Ring legend */}
               <div className="px-5 py-3 border-t border-csh-line flex items-center justify-between text-xs">
                 <div className="flex items-center gap-4">
-                  {[1, 3, 5].map((m, i) => (
-                    <div key={m} className="flex items-center gap-1.5">
+                  {rings.map((m, i) => (
+                    <div key={`${m}-${i}`} className="flex items-center gap-1.5">
                       <span
                         className="inline-block w-3 h-3 rounded-full border"
                         style={{
-                          borderColor: ["#0f2540", "#1a3a5c", "#b8924a"][i],
-                          background: [
-                            "rgba(15,37,64,0.12)",
-                            "rgba(26,58,92,0.08)",
-                            "rgba(184,146,74,0.08)",
-                          ][i],
+                          borderColor: RING_TICK_COLORS[i % 3],
+                          background: RING_FILL_COLORS[i % 3],
                         }}
                       />
-                      <span className="text-csh-ink-soft">{m} mi</span>
+                      <span className="text-csh-ink-soft tabular-nums">{m} mi</span>
                     </div>
                   ))}
                 </div>
-                <span className="text-csh-ink-soft">
-                  © OpenStreetMap · CARTO
-                </span>
+                <span className="text-csh-ink-soft">© OpenStreetMap · CARTO</span>
               </div>
             </div>
 
             {/* Stats */}
             <div className="lg:col-span-3">
-              <StatsPanel data={data} loading={loading} />
+              <StatsPanel data={data} loading={loading} rings={rings} />
               {data && (
                 <p className="mt-3 text-[11px] text-csh-ink-soft leading-relaxed">
                   {data.meta.note}
