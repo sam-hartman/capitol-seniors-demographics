@@ -19,20 +19,31 @@ const RING_COLORS = [
 
 const MILES_TO_METERS = 1609.344;
 
+// Lucide MapPin viewBox is 24x24 with the tip at roughly (12, 22). At size=36
+// that scales the tip to (18, 33). We anchor the icon at that exact pixel so
+// the tip sits on the geographic point.
+const PIN_SIZE = 36;
+const PIN_ANCHOR_X = 18;
+const PIN_ANCHOR_Y = 33;
+
 const PIN_SVG = renderToStaticMarkup(
   <MapPin
-    size={36}
-    strokeWidth={1.6}
+    size={PIN_SIZE}
+    strokeWidth={1.8}
     color="#1a3a5c"
     fill="#f5f1e8"
-    style={{ filter: "drop-shadow(0 2px 4px rgba(15,37,64,0.35))" }}
+    style={{
+      display: "block",
+      filter: "drop-shadow(0 2px 4px rgba(15,37,64,0.35))",
+    }}
   />
 );
 
+// Pulse circle is centered on the icon's anchor (the tip of the pin).
 const PIN_HTML = `
-<div style="position: relative; transform: translate(-50%, -100%);">
-  <div style="position: absolute; left: 50%; top: 90%; transform: translateX(-50%); width: 22px; height: 22px; border-radius: 50%; background: rgba(184, 146, 74, 0.45);" class="csh-pin-pulse"></div>
-  <div style="position: relative;">${PIN_SVG}</div>
+<div style="position: relative; width: ${PIN_SIZE}px; height: ${PIN_SIZE}px;">
+  <div style="position: absolute; left: ${PIN_ANCHOR_X}px; top: ${PIN_ANCHOR_Y}px; transform: translate(-50%, -50%); width: 18px; height: 18px; border-radius: 50%; background: rgba(184, 146, 74, 0.5); pointer-events: none;" class="csh-pin-pulse"></div>
+  ${PIN_SVG}
 </div>`;
 
 export default function MapView({ center, label, ringMiles = [1, 3, 5] }: Props) {
@@ -99,14 +110,14 @@ export default function MapView({ center, label, ringMiles = [1, 3, 5] }: Props)
     const pinIcon = L.divIcon({
       html: PIN_HTML,
       className: "csh-pin-marker",
-      iconSize: [36, 36],
-      iconAnchor: [18, 36],
+      iconSize: [PIN_SIZE, PIN_SIZE],
+      iconAnchor: [PIN_ANCHOR_X, PIN_ANCHOR_Y],
     });
     const marker = L.marker(latlng, { icon: pinIcon }).addTo(group);
     if (label) {
       marker.bindTooltip(label, {
         direction: "top",
-        offset: [0, -36],
+        offset: [0, -PIN_ANCHOR_Y],
         className: "csh-tooltip",
       });
     }

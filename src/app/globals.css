@@ -37,11 +37,19 @@
   --font-mono: var(--font-geist-mono);
 }
 
+html {
+  font-size: 17px;
+}
+@media (max-width: 640px) {
+  html { font-size: 16px; }
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), -apple-system, system-ui, sans-serif;
   font-feature-settings: "ss01", "cv11";
+  line-height: 1.55;
 }
 
 /* Subtle paper grain background */
@@ -52,12 +60,12 @@ body {
     radial-gradient(at 80% 90%, rgba(26, 58, 92, 0.05) 0, transparent 45%);
 }
 
-/* Letterpress label */
+/* Letterpress label — bumped from 11px to 12.5px and softened tracking for legibility */
 .csh-eyebrow {
   font-family: var(--font-sans);
-  font-size: 11px;
+  font-size: 12.5px;
   font-weight: 600;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--csh-gold);
 }
@@ -118,4 +126,45 @@ body {
   position: fixed;
   inset: 0;
   z-index: 60;
+}
+
+/* Print: clean one-pager for IC packets */
+@media print {
+  html { font-size: 13px; }
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  .csh-paper {
+    background: white !important;
+  }
+  main {
+    padding: 0 !important;
+  }
+  .leaflet-control-zoom,
+  .leaflet-control-attribution {
+    display: none !important;
+  }
+  .leaflet-tile-pane {
+    filter: saturate(0.4) brightness(1.05) !important;
+  }
+  .csh-display {
+    color: #0f2540 !important;
+  }
+  /* Make sure the grid stacks reasonably on letter paper */
+  @page {
+    size: letter;
+    margin: 0.5in;
+  }
+}
+
+/* Reduced motion: kill animations for users who set the preference */
+@media (prefers-reduced-motion: reduce) {
+  .csh-pin-pulse,
+  .csh-fade-up {
+    animation: none !important;
+  }
+  * {
+    transition-duration: 0.01ms !important;
+  }
 }

@@ -13,15 +13,65 @@ interface Props {
   onSelect: (result: GeocodeResult) => void;
   loading?: boolean;
   initialValue?: string;
+  size?: "lg" | "md";
+  autoFocus?: boolean;
 }
 
-export function SearchBar({ onSelect, loading, initialValue = "" }: Props) {
+// Simplify Nominatim's verbose labels for display.
+// Input: "United States Capitol, 1st Street North East, Capitol Hill,
+//   Capitol Hill Historic District, Washington, District of Columbia, 20004,
+//   United States"
+// Output: "United States Capitol · Washington, DC"
+const STATE_ABBR: Record<string, string> = {
+  Alabama: "AL", Alaska: "AK", Arizona: "AZ", Arkansas: "AR", California: "CA",
+  Colorado: "CO", Connecticut: "CT", Delaware: "DE", Florida: "FL", Georgia: "GA",
+  Hawaii: "HI", Idaho: "ID", Illinois: "IL", Indiana: "IN", Iowa: "IA",
+  Kansas: "KS", Kentucky: "KY", Louisiana: "LA", Maine: "ME", Maryland: "MD",
+  Massachusetts: "MA", Michigan: "MI", Minnesota: "MN", Mississippi: "MS",
+  Missouri: "MO", Montana: "MT", Nebraska: "NE", Nevada: "NV",
+  "New Hampshire": "NH", "New Jersey": "NJ", "New Mexico": "NM", "New York": "NY",
+  "North Carolina": "NC", "North Dakota": "ND", Ohio: "OH", Oklahoma: "OK",
+  Oregon: "OR", Pennsylvania: "PA", "Rhode Island": "RI", "South Carolina": "SC",
+  "South Dakota": "SD", Tennessee: "TN", Texas: "TX", Utah: "UT", Vermont: "VT",
+  Virginia: "VA", Washington: "WA", "West Virginia": "WV", Wisconsin: "WI",
+  Wyoming: "WY", "District of Columbia": "DC",
+};
+
+function simplifyLabel(label: string): string {
+  const parts = label.split(",").map((p) => p.trim());
+  if (parts.length < 3) return label;
+  const head = parts[0];
+  // Drop "United States" tail.
+  const trimmed = parts[parts.length - 1] === "United States" ? parts.slice(0, -1) : parts;
+  // Find the state (last segment that matches a known state name).
+  let stateIdx = -1;
+  for (let i = trimmed.length - 1; i >= 0; i--) {
+    if (STATE_ABBR[trimmed[i]]) {
+      stateIdx = i;
+      break;
+    }
+  }
+  // City is usually the segment immediately before the state.
+  const stateAbbr = stateIdx >= 0 ? STATE_ABBR[trimmed[stateIdx]] : "";
+  const city = stateIdx > 0 ? trimmed[stateIdx - 1] : trimmed[trimmed.length - 2];
+  if (city && stateAbbr) return `${head} · ${city}, ${stateAbbr}`;
+  return head;
+}
+
+export function SearchBar({
+  onSelect,
+  loading,
+  initialValue = "",
+  size = "lg",
+  autoFocus = false,
+}: Props) {
   const [query, setQuery] = useState(initialValue);
   const [results, setResults] = useState<GeocodeResult[]>([]);
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searching, setSearching] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -32,6 +82,25 @@ export function SearchBar({ onSelect, loading, initialValue = "" }: Props) {
     }
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
+  }, []);
+
+  useEffect(() => {
+    if (autoFocus) inputRef.current?.focus();
+  }, [autoFocus]);
+
+  // "/" focuses the search box from anywhere (unless already typing).
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== "/") return;
+      const t = e.target as HTMLElement | null;
+      const tag = t?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      e.preventDefault();
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, []);
 
   async function runSearch(q: string) {
@@ -67,10 +136,13 @@ export function SearchBar({ onSelect, loading, initialValue = "" }: Props) {
   }
 
   function pick(r: GeocodeResult) {
-    setQuery(r.label);
+    setQuery(simplifyLabel(r.label));
     setOpen(false);
     onSelect(r);
   }
+
+  const padY = size === "lg" ? "py-4" : "py-3";
+  const fontSize = size === "lg" ? "text-[17px]" : "text-[15px]";
 
   return (
     <div ref={wrapRef} className="relative w-full">
@@ -79,16 +151,19 @@ export function SearchBar({ onSelect, loading, initialValue = "" }: Props) {
         className="group flex items-stretch border border-csh-line bg-white shadow-[0_1px_0_rgba(26,58,92,0.04),0_8px_24px_-12px_rgba(26,58,92,0.18)] focus-within:border-csh-navy transition-colors"
       >
         <div className="flex items-center pl-4 text-csh-navy/70">
-          <Search className="w-5 h-5" strokeWidth={1.6} />
+          <Search className={size === "lg" ? "w-5 h-5" : "w-4 h-4"} strokeWidth={1.6} />
         </div>
         <input
+          ref={inputRef}
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => results.length > 0 && setOpen(true)}
-          placeholder="Enter a property address, city, or ZIP"
-          className="flex-1 px-4 py-4 bg-transparent text-csh-ink placeholder:text-csh-ink-soft/60 focus:outline-none text-[15px]"
+          placeholder="Enter an address, city, or ZIP — press / to focus"
+          className={`flex-1 px-4 ${padY} bg-transparent text-csh-ink placeholder:text-csh-ink-soft/60 focus:outline-none ${fontSize}`}
           data-tutorial="search"
+          autoComplete="off"
+          spellCheck={false}
         />
         <button
           type="submit"
@@ -111,12 +186,12 @@ export function SearchBar({ onSelect, loading, initialValue = "" }: Props) {
                 <button
                   type="button"
                   onClick={() => pick(r)}
-                  className="w-full text-left px-4 py-3 hover:bg-csh-cream/60 transition-colors text-sm text-csh-ink flex items-start gap-3"
+                  className="w-full text-left px-4 py-3 hover:bg-csh-cream/60 transition-colors text-csh-ink flex items-start gap-3"
                 >
-                  <span className="text-csh-gold mt-0.5 font-serif text-xs">
+                  <span className="text-csh-gold mt-0.5 font-serif text-xs tabular-nums">
                     0{i + 1}
                   </span>
-                  <span className="flex-1">{r.label}</span>
+                  <span className="flex-1 text-[15px]">{simplifyLabel(r.label)}</span>
                 </button>
               </li>
             ))}

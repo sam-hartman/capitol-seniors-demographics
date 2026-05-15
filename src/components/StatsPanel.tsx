@@ -9,6 +9,7 @@ interface Props {
   rings: number[];
   onRingChange: (index: number, value: number) => void;
   ringOptions: number[];
+  loadingCaption?: string | null;
 }
 
 const RING_TICK_COLORS = ["#0f2540", "#1a3a5c", "#b8924a"];
@@ -17,7 +18,7 @@ const METRICS = [
   {
     key: "medianHomeValue" as const,
     label: "Median Home Value",
-    eyebrow: "Owner-Occupied",
+    sub: "Owner-occupied households",
     icon: Home,
     format: (v: number | null) =>
       v == null ? "—" : `$${Math.round(v).toLocaleString()}`,
@@ -25,7 +26,7 @@ const METRICS = [
   {
     key: "medianHouseholdIncome" as const,
     label: "Median Household Income",
-    eyebrow: "Annual",
+    sub: "Annual, all households",
     icon: Wallet,
     format: (v: number | null) =>
       v == null ? "—" : `$${Math.round(v).toLocaleString()}`,
@@ -33,21 +34,21 @@ const METRICS = [
   {
     key: "totalPopulation" as const,
     label: "Total Population",
-    eyebrow: "All Ages",
+    sub: "All ages",
     icon: Users,
     format: (v: number) => v.toLocaleString(),
   },
   {
     key: "totalHouseholds45to64" as const,
     label: "Households Age 45–64",
-    eyebrow: "Adult-Child Decision Set",
+    sub: "Likely decision-makers for parents",
     icon: UsersRound,
     format: (v: number) => v.toLocaleString(),
   },
   {
     key: "totalSeniors75plus" as const,
     label: "Seniors Age 75+",
-    eyebrow: "Primary Demand Cohort",
+    sub: "Target residents",
     icon: Accessibility,
     format: (v: number) => v.toLocaleString(),
   },
@@ -61,15 +62,15 @@ function SkeletonRow({ ringCount }: { ringCount: number }) {
         gridTemplateColumns: `auto 1fr repeat(${ringCount}, minmax(0,1fr))`,
       }}
     >
-      <div className="w-9 h-9 rounded-full bg-csh-stone/60 animate-pulse" />
+      <div className="w-10 h-10 rounded-full bg-csh-stone/60 animate-pulse" />
       <div className="space-y-2">
-        <div className="h-3 w-20 bg-csh-stone/60 animate-pulse rounded" />
-        <div className="h-4 w-40 bg-csh-stone/40 animate-pulse rounded" />
+        <div className="h-4 w-44 bg-csh-stone/50 animate-pulse rounded" />
+        <div className="h-3 w-32 bg-csh-stone/40 animate-pulse rounded" />
       </div>
       {Array.from({ length: ringCount }).map((_, i) => (
         <div
           key={i}
-          className="h-6 w-24 bg-csh-stone/50 animate-pulse rounded justify-self-end"
+          className="h-7 w-28 bg-csh-stone/50 animate-pulse rounded justify-self-end"
         />
       ))}
     </div>
@@ -94,7 +95,7 @@ function RingHeaderSelect({
   return (
     <div className="flex items-center justify-end gap-2">
       <span
-        className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0"
+        className="inline-block w-3 h-3 rounded-full flex-shrink-0"
         style={{ backgroundColor: RING_TICK_COLORS[index % 3] }}
       />
       <div className="relative">
@@ -103,8 +104,8 @@ function RingHeaderSelect({
           disabled={disabled}
           onChange={(e) => onChange(index, Number(e.target.value))}
           aria-label={`Ring ${index + 1} radius`}
-          className="appearance-none bg-transparent border-0 text-csh-ink text-[11px] font-semibold uppercase tabular-nums py-0.5 pl-1.5 pr-5 hover:text-csh-navy focus:outline-none focus:text-csh-navy cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          style={{ letterSpacing: "0.18em" }}
+          className="appearance-none bg-transparent border-0 text-csh-ink text-sm font-semibold uppercase tabular-nums py-1 pl-2 pr-6 hover:text-csh-navy focus:outline-none focus:text-csh-navy cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          style={{ letterSpacing: "0.10em" }}
         >
           {ringOptions.map((opt) => (
             <option key={opt} value={opt}>
@@ -113,11 +114,11 @@ function RingHeaderSelect({
           ))}
         </select>
         <svg
-          className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 text-csh-ink-soft pointer-events-none"
+          className="absolute right-0 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-csh-ink-soft pointer-events-none"
           viewBox="0 0 12 12"
           fill="none"
           stroke="currentColor"
-          strokeWidth="1.5"
+          strokeWidth="1.6"
         >
           <path d="M3 4.5 L6 7.5 L9 4.5" />
         </svg>
@@ -132,15 +133,16 @@ export function StatsPanel({
   rings,
   onRingChange,
   ringOptions,
+  loadingCaption,
 }: Props) {
   if (!data && !loading) {
     return (
       <div
         data-tutorial="stats"
-        className="border border-csh-line bg-white px-8 py-12 text-center"
+        className="border border-csh-line bg-white px-8 py-14 text-center"
       >
         <div className="csh-eyebrow mb-3">Awaiting Address</div>
-        <p className="csh-display text-2xl text-csh-navy max-w-sm mx-auto leading-snug">
+        <p className="csh-display text-2xl text-csh-navy max-w-md mx-auto leading-snug">
           Enter a candidate site address to generate a demographic profile across each ring.
         </p>
       </div>
@@ -159,8 +161,8 @@ export function StatsPanel({
         className="grid gap-4 px-6 py-3 border-b border-csh-line bg-csh-cream/40 items-center"
         style={gridStyle}
       >
-        <div className="w-9" />
-        <div className="csh-eyebrow">Indicator</div>
+        <div className="w-10" />
+        <div className="csh-eyebrow">Metric</div>
         {rings.map((mile, i) => (
           <RingHeaderSelect
             key={i}
@@ -172,6 +174,16 @@ export function StatsPanel({
           />
         ))}
       </div>
+
+      {/* Loading caption */}
+      {loading && loadingCaption && (
+        <div
+          aria-live="polite"
+          className="px-6 py-2 text-[13px] text-csh-ink-soft border-b border-csh-line/60 bg-csh-parchment/50 italic"
+        >
+          {loadingCaption}
+        </div>
+      )}
 
       {/* Metric rows */}
       <div className="divide-y divide-csh-line/70">
@@ -187,20 +199,22 @@ export function StatsPanel({
                   className="grid gap-4 px-6 py-5 items-center group hover:bg-csh-cream/40 transition-colors csh-fade-up"
                   style={{ ...gridStyle, animationDelay: `${mi * 60}ms` }}
                 >
-                  <div className="w-9 h-9 flex items-center justify-center rounded-full bg-csh-cream/70 text-csh-navy group-hover:bg-csh-navy group-hover:text-csh-cream transition-colors">
-                    <Icon strokeWidth={1.6} size={18} />
+                  <div className="w-10 h-10 flex items-center justify-center rounded-full bg-csh-cream/70 text-csh-navy group-hover:bg-csh-navy group-hover:text-csh-cream transition-colors">
+                    <Icon strokeWidth={1.6} size={20} />
                   </div>
                   <div>
-                    <div className="csh-eyebrow text-csh-ink-soft">{m.eyebrow}</div>
-                    <div className="text-csh-ink font-medium leading-tight mt-0.5">
+                    <div className="text-csh-ink font-semibold leading-tight text-[15px]">
                       {m.label}
+                    </div>
+                    <div className="text-csh-ink-soft text-[13px] mt-0.5">
+                      {m.sub}
                     </div>
                   </div>
                   {data!.rings.map((r) => {
                     const v = r[m.key];
                     return (
                       <div key={r.radiusMiles} className="text-right">
-                        <span className="csh-display text-xl text-csh-navy tabular-nums">
+                        <span className="csh-display text-2xl text-csh-navy tabular-nums">
                           {(m.format as (x: typeof v) => string)(v)}
                         </span>
                       </div>
@@ -213,7 +227,7 @@ export function StatsPanel({
 
       {/* Footer */}
       {data && !loading && (
-        <div className="px-6 py-4 border-t border-csh-line bg-csh-parchment text-xs text-csh-ink-soft flex items-center justify-between gap-4">
+        <div className="px-6 py-3 border-t border-csh-line bg-csh-parchment text-[12px] text-csh-ink-soft flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
           <span>
             Source: U.S. Census Bureau · {data.meta.acsRelease}
             {data.meta.acsYears ? ` (${data.meta.acsYears})` : ""}
