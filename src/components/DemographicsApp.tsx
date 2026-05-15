@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { HelpCircle, Printer } from "lucide-react";
+import { Download, HelpCircle, Printer } from "lucide-react";
 import { SearchBar, type GeocodeResult } from "./SearchBar";
 import { StatsPanel } from "./StatsPanel";
 import { Tutorial } from "./Tutorial";
+import { buildCsv, csvFilenameFor, downloadCsv } from "@/lib/csv";
 import type { DemographicsResult } from "@/lib/census";
 
 const RING_OPTIONS = [0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4, 5, 7, 10, 15, 20, 25];
@@ -122,15 +123,36 @@ export function DemographicsApp({
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div data-tutorial="export" className="flex items-center gap-2">
             <button
-              data-tutorial="export"
+              onClick={() => {
+                if (!data || !location) return;
+                const csv = buildCsv(data, {
+                  address: location.label,
+                  lat: location.lat,
+                  lon: location.lon,
+                });
+                downloadCsv(csvFilenameFor(location.label), csv);
+              }}
+              disabled={!data || !location}
+              className="hidden sm:inline-flex items-center gap-2 px-3 py-2 text-xs uppercase tracking-wider text-csh-navy hover:bg-csh-cream border border-transparent hover:border-csh-line transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ letterSpacing: "0.08em" }}
+              title={
+                !location
+                  ? "Select an address first"
+                  : "Download active profile as CSV"
+              }
+            >
+              <Download className="w-3.5 h-3.5" strokeWidth={1.6} />
+              CSV
+            </button>
+            <button
               onClick={() => window.print()}
               className="hidden sm:inline-flex items-center gap-2 px-3 py-2 text-xs uppercase tracking-wider text-csh-navy hover:bg-csh-cream border border-transparent hover:border-csh-line transition-colors"
               style={{ letterSpacing: "0.08em" }}
             >
               <Printer className="w-3.5 h-3.5" strokeWidth={1.6} />
-              Print Report
+              Print
             </button>
             <button
               onClick={() => setTutorialOpen(true)}

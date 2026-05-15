@@ -12,13 +12,15 @@ const ACS_BASE = `https://api.census.gov/data/${ACS_YEAR}/acs/acs5`;
 export const DEFAULT_RING_MILES = [1, 3, 5] as const;
 
 // Census table IDs requested
-const TABLES = ["B25077", "B19013", "B01003", "B25007", "B01001"] as const;
+const TABLES = ["B25077", "B19013", "B01003", "B11001", "B25003", "B25007", "B01001"] as const;
 
 // Direct Census API uses underscore + _E suffix; Census Reporter strips both.
 const ACS_VARS_RAW = [
-  "B25077_001E",
-  "B19013_001E",
-  "B01003_001E",
+  "B25077_001E", // Median home value (owner-occupied)
+  "B19013_001E", // Median household income
+  "B01003_001E", // Total population
+  "B11001_001E", // Total households (proper weight for income median)
+  "B25003_002E", // Owner-occupied housing units (proper weight for home value median)
   "B25007_006E",
   "B25007_007E",
   "B25007_016E",
@@ -40,6 +42,8 @@ const VARS = {
   homeValue: "B25077001",
   income: "B19013001",
   population: "B01003001",
+  households: "B11001001",
+  ownerUnits: "B25003002",
   hhOwn4554: "B25007006",
   hhOwn5564: "B25007007",
   hhRent4554: "B25007016",
@@ -325,8 +329,17 @@ export async function computeDemographics(
         (v[VARS.f8084] ?? 0) +
         (v[VARS.f85] ?? 0);
 
-      homeValueRows.push({ value: v[VARS.homeValue], weight: pop });
-      incomeRows.push({ value: v[VARS.income], weight: pop });
+      // Weight medians by their proper denominators (owner-occupied units for
+      // home value, total households for income) — not raw population, which
+      // overweights large rental tracts with few owners.
+      homeValueRows.push({
+        value: v[VARS.homeValue],
+        weight: v[VARS.ownerUnits] ?? 0,
+      });
+      incomeRows.push({
+        value: v[VARS.income],
+        weight: v[VARS.households] ?? 0,
+      });
     }
 
     return {
@@ -346,7 +359,7 @@ export async function computeDemographics(
       acsRelease: release?.name ?? "ACS 5-year",
       acsYears: release?.years ?? "",
       tractsConsidered: tractsWithDist.length,
-      note: "Tract-level approximation: tracts whose centroid falls within each ring are aggregated. Medians are population-weighted averages of tract medians (true ring medians require record-level data).",
+      note: "Tract-level approximation: tracts whose centroid falls within each ring are aggregated. Median home value is weighted by owner-occupied units; median income by households. True ring medians require record-level data.",
     },
   };
 }

@@ -135,7 +135,10 @@ export function StatsPanel({
 }: Props) {
   if (!data && !loading) {
     return (
-      <div className="border border-csh-line bg-white px-8 py-12 text-center">
+      <div
+        data-tutorial="stats"
+        className="border border-csh-line bg-white px-8 py-12 text-center"
+      >
         <div className="csh-eyebrow mb-3">Awaiting Address</div>
         <p className="csh-display text-2xl text-csh-navy max-w-sm mx-auto leading-snug">
           Enter a candidate site address to generate a demographic profile across each ring.
