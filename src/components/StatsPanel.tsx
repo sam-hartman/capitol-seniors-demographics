@@ -7,6 +7,8 @@ interface Props {
   data: DemographicsResult | null;
   loading: boolean;
   rings: number[];
+  onRingChange: (index: number, value: number) => void;
+  ringOptions: number[];
 }
 
 const RING_TICK_COLORS = ["#0f2540", "#1a3a5c", "#b8924a"];
@@ -74,7 +76,63 @@ function SkeletonRow({ ringCount }: { ringCount: number }) {
   );
 }
 
-export function StatsPanel({ data, loading, rings }: Props) {
+interface RingHeaderSelectProps {
+  value: number;
+  index: number;
+  onChange: (index: number, value: number) => void;
+  disabled?: boolean;
+  ringOptions: number[];
+}
+
+function RingHeaderSelect({
+  value,
+  index,
+  onChange,
+  disabled,
+  ringOptions,
+}: RingHeaderSelectProps) {
+  return (
+    <div className="flex items-center justify-end gap-2">
+      <span
+        className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0"
+        style={{ backgroundColor: RING_TICK_COLORS[index % 3] }}
+      />
+      <div className="relative">
+        <select
+          value={value}
+          disabled={disabled}
+          onChange={(e) => onChange(index, Number(e.target.value))}
+          aria-label={`Ring ${index + 1} radius`}
+          className="appearance-none bg-transparent border-0 text-csh-ink text-[11px] font-semibold uppercase tabular-nums py-0.5 pl-1.5 pr-5 hover:text-csh-navy focus:outline-none focus:text-csh-navy cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          style={{ letterSpacing: "0.18em" }}
+        >
+          {ringOptions.map((opt) => (
+            <option key={opt} value={opt}>
+              {opt} MILE
+            </option>
+          ))}
+        </select>
+        <svg
+          className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 text-csh-ink-soft pointer-events-none"
+          viewBox="0 0 12 12"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        >
+          <path d="M3 4.5 L6 7.5 L9 4.5" />
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+export function StatsPanel({
+  data,
+  loading,
+  rings,
+  onRingChange,
+  ringOptions,
+}: Props) {
   if (!data && !loading) {
     return (
       <div className="border border-csh-line bg-white px-8 py-12 text-center">
@@ -86,29 +144,29 @@ export function StatsPanel({ data, loading, rings }: Props) {
     );
   }
 
-  const sortedRings = [...rings].sort((a, b) => a - b);
-  const ringCount = sortedRings.length;
+  const ringCount = rings.length;
   const gridStyle = {
     gridTemplateColumns: `auto 1fr repeat(${ringCount}, minmax(0,1fr))`,
   };
 
   return (
     <div data-tutorial="stats" className="border border-csh-line bg-white">
-      {/* Header row with ring badges */}
+      {/* Header row with editable ring badges */}
       <div
-        className="grid gap-4 px-6 py-4 border-b border-csh-line bg-csh-cream/40 items-center"
+        className="grid gap-4 px-6 py-3 border-b border-csh-line bg-csh-cream/40 items-center"
         style={gridStyle}
       >
         <div className="w-9" />
         <div className="csh-eyebrow">Indicator</div>
-        {sortedRings.map((mile, i) => (
-          <div key={`${mile}-${i}`} className="flex items-center justify-end gap-2">
-            <span
-              className="inline-block w-2.5 h-2.5 rounded-full"
-              style={{ backgroundColor: RING_TICK_COLORS[i % 3] }}
-            />
-            <span className="csh-eyebrow text-csh-ink tabular-nums">{mile} Mile</span>
-          </div>
+        {rings.map((mile, i) => (
+          <RingHeaderSelect
+            key={i}
+            value={mile}
+            index={i}
+            onChange={onRingChange}
+            disabled={loading}
+            ringOptions={ringOptions}
+          />
         ))}
       </div>
 

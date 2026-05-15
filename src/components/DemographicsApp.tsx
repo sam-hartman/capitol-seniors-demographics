@@ -6,8 +6,9 @@ import { HelpCircle, Printer } from "lucide-react";
 import { SearchBar, type GeocodeResult } from "./SearchBar";
 import { StatsPanel } from "./StatsPanel";
 import { Tutorial } from "./Tutorial";
-import { RingControls } from "./RingControls";
 import type { DemographicsResult } from "@/lib/census";
+
+const RING_OPTIONS = [0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4, 5, 7, 10, 15, 20, 25];
 
 const MapView = dynamic(() => import("./MapView"), {
   ssr: false,
@@ -227,25 +228,6 @@ export function DemographicsApp({
             </div>
           )}
 
-          {/* Ring controls */}
-          <div
-            data-tutorial="rings"
-            className="mb-6 flex flex-wrap items-center justify-between gap-4 border border-csh-line bg-white px-5 py-3.5"
-          >
-            <RingControls rings={rings} onChange={setRings} disabled={loading} />
-            <button
-              onClick={() => setRings(DEFAULT_RINGS)}
-              className="text-xs text-csh-ink-soft hover:text-csh-navy underline underline-offset-4 disabled:opacity-50"
-              disabled={
-                rings[0] === DEFAULT_RINGS[0] &&
-                rings[1] === DEFAULT_RINGS[1] &&
-                rings[2] === DEFAULT_RINGS[2]
-              }
-            >
-              Reset to 1 / 3 / 5
-            </button>
-          </div>
-
           <div className="grid lg:grid-cols-5 gap-6">
             {/* Map */}
             <div className="lg:col-span-2 border border-csh-line bg-white overflow-hidden">
@@ -286,11 +268,31 @@ export function DemographicsApp({
 
             {/* Stats */}
             <div className="lg:col-span-3">
-              <StatsPanel data={data} loading={loading} rings={rings} />
+              <StatsPanel
+                data={data}
+                loading={loading}
+                rings={rings}
+                ringOptions={RING_OPTIONS}
+                onRingChange={(index, value) =>
+                  setRings(rings.map((r, i) => (i === index ? value : r)))
+                }
+              />
               {data && (
-                <p className="mt-3 text-[11px] text-csh-ink-soft leading-relaxed">
-                  {data.meta.note}
-                </p>
+                <div className="mt-3 flex items-start justify-between gap-4">
+                  <p className="text-[11px] text-csh-ink-soft leading-relaxed flex-1">
+                    {data.meta.note}
+                  </p>
+                  {(rings[0] !== DEFAULT_RINGS[0] ||
+                    rings[1] !== DEFAULT_RINGS[1] ||
+                    rings[2] !== DEFAULT_RINGS[2]) && (
+                    <button
+                      onClick={() => setRings(DEFAULT_RINGS)}
+                      className="text-[11px] text-csh-ink-soft hover:text-csh-navy underline underline-offset-4 whitespace-nowrap"
+                    >
+                      Reset to 1 / 3 / 5
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           </div>
