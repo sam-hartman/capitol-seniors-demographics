@@ -23,7 +23,7 @@ test.describe("CSH Demographics — production smoke", () => {
     });
 
     // Stats panel renders metric labels (wait for fetch)
-    await expect(page.getByText("Median Home Value")).toBeVisible({
+    await expect(page.getByText("Median Home Value", { exact: true })).toBeVisible({
       timeout: 30000,
     });
     await expect(page.getByText("Median Household Income")).toBeVisible();
@@ -56,7 +56,7 @@ test.describe("CSH Demographics — production smoke", () => {
     await expect(page.locator(".csh-pin-marker").first()).toBeVisible({
       timeout: 15000,
     });
-    await expect(page.getByText("Median Home Value")).toBeVisible({
+    await expect(page.getByText("Median Home Value", { exact: true })).toBeVisible({
       timeout: 30000,
     });
   });
@@ -89,6 +89,58 @@ test.describe("CSH Demographics — production smoke", () => {
     expect(Array.isArray(json.data)).toBe(true);
     expect(json.data.length).toBeGreaterThan(0);
     expect(typeof json.data[0].lat).toBe("number");
+  });
+
+  test("CSV export enables when data loaded and downloads", async ({ page }) => {
+    await page.goto(URL);
+    const csvButton = page.getByRole("button", { name: /^CSV$/ });
+    await expect(csvButton).toBeDisabled();
+    await page.getByRole("button", { name: /US Capitol, DC/i }).click();
+    await expect(page.getByText("Median Home Value", { exact: true })).toBeVisible({
+      timeout: 30000,
+    });
+    await expect(csvButton).toBeEnabled();
+    const downloadPromise = page.waitForEvent("download");
+    await csvButton.click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toMatch(/^csh-demographics_.+\.csv$/);
+  });
+
+  test("tutorial works on cold open (no address)", async ({ page }) => {
+    await page.goto(URL);
+    await page.getByRole("button", { name: /Tutorial/i }).click();
+    // Click through all steps without ever picking an address.
+    await expect(page.getByText(/01 — Address Lookup/)).toBeVisible();
+    await page.getByRole("button", { name: /^Next$/i }).click();
+    await page.getByRole("button", { name: /^Next$/i }).click();
+    await page.getByRole("button", { name: /^Next$/i }).click();
+    await expect(page.getByText(/04 — Export/)).toBeVisible();
+    await page.getByRole("button", { name: /Finish/i }).click();
+    await expect(page.getByText(/01 — Address Lookup/)).not.toBeVisible();
+  });
+
+  test("median weighting is correct (US Capitol 1mi spot check)", async ({
+    request,
+  }) => {
+    const res = await request.get(
+      `${URL}/api/demographics?lat=38.8895&lon=-77.0353&rings=1,3,5`
+    );
+    const json = await res.json();
+    expect(json.success).toBe(true);
+    const oneMi = json.data.rings.find(
+      (r: { radiusMiles: number }) => r.radiusMiles === 1
+    );
+    // Hand-verified from raw ACS 2024 tract data using owner-unit weighting:
+    // expected ≈ $596,757 ± $5 for rounding
+    expect(oneMi.medianHomeValue).toBeGreaterThan(590_000);
+    expect(oneMi.medianHomeValue).toBeLessThan(605_000);
+    // Hand-verified household-weighted income ≈ $124,517 ± $5
+    expect(oneMi.medianHouseholdIncome).toBeGreaterThan(120_000);
+    expect(oneMi.medianHouseholdIncome).toBeLessThan(130_000);
+    // Counts are exact sums:
+    expect(oneMi.totalPopulation).toBe(14243);
+    expect(oneMi.totalHouseholds45to64).toBe(1046);
+    expect(oneMi.totalSeniors75plus).toBe(675);
   });
 
   test("/api/demographics returns 3 rings with all 5 metrics", async ({ request }) => {
