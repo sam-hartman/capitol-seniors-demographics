@@ -241,6 +241,14 @@ export interface RingMetrics {
   medianHouseholdIncome: number | null;
 }
 
+export interface EsriExtras {
+  population2030: number | null;
+  popGrowthPct: number | null;
+  incomeGrowthPct: number | null;
+  tapestrySegmentName: string | null;
+  tapestrySegmentCode: string | null;
+}
+
 export interface DemographicsResult {
   rings: RingMetrics[];
   meta: {
@@ -249,6 +257,9 @@ export interface DemographicsResult {
     tractsConsidered: number;
     note: string;
   };
+  // ESRI-only premium fields, one per ring (sorted ascending). Absent when
+  // source is Census.
+  esriExtras?: EsriExtras[];
 }
 
 function popWeightedMedian(

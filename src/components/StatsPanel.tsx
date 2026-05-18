@@ -224,14 +224,134 @@ export function StatsPanel({
             })}
       </div>
 
+      {/* ESRI premium extras — only when source is ESRI */}
+      {data && data.esriExtras && !loading && (
+        <>
+          <div
+            className="grid gap-4 px-6 py-3 border-t border-csh-line bg-csh-gold/[0.08] items-center"
+            style={gridStyle}
+          >
+            <div className="w-10" />
+            <div className="csh-eyebrow text-csh-gold">Premium · ESRI Only</div>
+            {data.esriExtras.map((_, i) => (
+              <div key={`hdr-${i}`} />
+            ))}
+          </div>
+
+          {/* 2030 projected population */}
+          <div className="grid gap-4 px-6 py-4 items-center border-t border-csh-line/50" style={gridStyle}>
+            <div className="w-10 h-10 flex items-center justify-center rounded-full bg-csh-gold/15 text-csh-gold">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M3 17l6-6 4 4 8-8M14 7h7v7"/></svg>
+            </div>
+            <div>
+              <div className="text-csh-ink font-semibold leading-tight text-[15px]">
+                2030 Population
+              </div>
+              <div className="text-csh-ink-soft text-[13px] mt-0.5">
+                Esri 5-year forecast
+              </div>
+            </div>
+            {data.esriExtras.map((x, i) => (
+              <div key={`pop2030-${i}`} className="text-right">
+                <div className="csh-display text-2xl text-csh-navy tabular-nums">
+                  {x.population2030 != null ? x.population2030.toLocaleString() : "—"}
+                </div>
+                {x.popGrowthPct != null && (
+                  <div
+                    className={`text-[11px] tabular-nums ${
+                      x.popGrowthPct >= 0 ? "text-emerald-700" : "text-red-700"
+                    }`}
+                  >
+                    {x.popGrowthPct >= 0 ? "+" : ""}
+                    {x.popGrowthPct.toFixed(1)}%/yr
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Income growth */}
+          {data.esriExtras.some((x) => x.incomeGrowthPct != null) && (
+            <div className="grid gap-4 px-6 py-4 items-center border-t border-csh-line/50" style={gridStyle}>
+              <div className="w-10 h-10 flex items-center justify-center rounded-full bg-csh-gold/15 text-csh-gold">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M12 2v20M5 9l7-7 7 7M5 15l7 7 7-7"/></svg>
+              </div>
+              <div>
+                <div className="text-csh-ink font-semibold leading-tight text-[15px]">
+                  Income Growth (2025–2030)
+                </div>
+                <div className="text-csh-ink-soft text-[13px] mt-0.5">
+                  Median HH income, annualized
+                </div>
+              </div>
+              {data.esriExtras.map((x, i) => (
+                <div key={`inc-${i}`} className="text-right">
+                  <span
+                    className={`csh-display text-xl tabular-nums ${
+                      x.incomeGrowthPct != null && x.incomeGrowthPct >= 0
+                        ? "text-emerald-700"
+                        : "text-red-700"
+                    }`}
+                  >
+                    {x.incomeGrowthPct != null
+                      ? `${x.incomeGrowthPct >= 0 ? "+" : ""}${x.incomeGrowthPct.toFixed(1)}%`
+                      : "—"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Dominant Tapestry segment */}
+          {data.esriExtras.some((x) => x.tapestrySegmentName) && (
+            <div className="grid gap-4 px-6 py-4 items-center border-t border-csh-line/50" style={gridStyle}>
+              <div className="w-10 h-10 flex items-center justify-center rounded-full bg-csh-gold/15 text-csh-gold">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="9"/><path d="M12 3v6M12 15v6M3 12h6M15 12h6"/></svg>
+              </div>
+              <div>
+                <div className="text-csh-ink font-semibold leading-tight text-[15px]">
+                  Dominant Tapestry Segment
+                </div>
+                <div className="text-csh-ink-soft text-[13px] mt-0.5">
+                  Esri psychographic profile
+                </div>
+              </div>
+              {data.esriExtras.map((x, i) => (
+                <div key={`tap-${i}`} className="text-right">
+                  {x.tapestrySegmentName ? (
+                    <>
+                      <div className="text-csh-navy font-semibold text-[14px] leading-tight">
+                        {x.tapestrySegmentName}
+                      </div>
+                      {x.tapestrySegmentCode && (
+                        <div className="text-csh-ink-soft text-[11px] tabular-nums">
+                          Seg {x.tapestrySegmentCode}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <span className="text-csh-ink-soft">—</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
       {/* Footer */}
       {data && !loading && (
         <div className="px-6 py-3 border-t border-csh-line bg-csh-parchment text-[12px] text-csh-ink-soft flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
           <span>
-            Source: U.S. Census Bureau · {data.meta.acsRelease}
-            {data.meta.acsYears ? ` (${data.meta.acsYears})` : ""}
+            Source: {data.esriExtras ? "Esri" : "U.S. Census Bureau"} ·{" "}
+            {data.meta.acsRelease}
+            {data.meta.acsYears && !data.esriExtras
+              ? ` (${data.meta.acsYears})`
+              : ""}
           </span>
-          <span>{data.meta.tractsConsidered} tracts evaluated</span>
+          {!data.esriExtras && (
+            <span>{data.meta.tractsConsidered} tracts evaluated</span>
+          )}
         </div>
       )}
     </div>

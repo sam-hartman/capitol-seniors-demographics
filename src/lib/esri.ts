@@ -9,21 +9,25 @@
 //
 // We cache responses by (lat, lon, rings) tuple to avoid double-charging.
 
-import type { DemographicsResult, RingMetrics } from "./census";
+import type { DemographicsResult, EsriExtras, RingMetrics } from "./census";
 
 const ENRICH_URL =
   "https://geoenrich.arcgis.com/arcgis/rest/services/World/geoenrichmentserver/Geoenrichment/enrich";
 
 // ESRI variable IDs — verified via dataCollections metadata.
-// KeyUSFacts: pre-aggregated, current-year, Esri-forecast estimates.
+// ~16 vars × 3 rings = ~48 credits per call. Cached 24h.
 const ANALYSIS_VARS = [
-  // KeyUSFacts
-  "KeyUSFacts.TOTPOP_CY", // Current-year total population
-  "KeyUSFacts.MEDHINC_CY", // Current-year median household income
-  "KeyUSFacts.MEDVAL_CY", // Current-year median home value (owner-occupied)
+  // KeyUSFacts — current-year Esri estimates
+  "KeyUSFacts.TOTPOP_CY",
+  "KeyUSFacts.MEDHINC_CY",
+  "KeyUSFacts.MEDVAL_CY",
+  // 5-year forecasts (2030)
+  "KeyUSFacts.TOTPOP_FY", // 2030 population
+  "KeyUSFacts.POPGRWCYFY", // 2025-2030 pop growth rate %
+  "KeyUSFacts.MHIGRWCYFY", // 2025-2030 median HH income growth rate %
   // incomebyage — household counts by age of householder
-  "incomebyage.IA45BASECY", // 2025 HH Income Base: HHr 45-54 (= HH count age 45-54)
-  "incomebyage.IA55BASECY", // 2025 HH Income Base: HHr 55-64 (= HH count age 55-64)
+  "incomebyage.IA45BASECY",
+  "incomebyage.IA55BASECY",
   // Age — population 75+
   "Age.MALE75",
   "Age.MALE80",
@@ -31,6 +35,9 @@ const ANALYSIS_VARS = [
   "Age.FEM75",
   "Age.FEM80",
   "Age.FEM85",
+  // Tapestry — pre-aggregated dominant segment
+  "TapestryHouseholds.THHSNAME", // segment name (e.g. "Silver & Gold")
+  "TapestryHouseholds.THHSCODE", // segment code (e.g. "9A")
 ];
 
 // Server-side cache, lifetime = process lifetime + Next.js revalidate.
@@ -138,7 +145,7 @@ export async function computeDemographicsViaEsri(
     const a = features[i]?.attributes ?? {};
     return {
       radiusMiles: radius,
-      tractCount: 0, // ESRI doesn't expose contributing-tract count
+      tractCount: 0,
       totalPopulation: Math.round(num(a.TOTPOP_CY)),
       totalHouseholds45to64: Math.round(
         num(a.IA45BASECY) + num(a.IA55BASECY)
@@ -156,14 +163,28 @@ export async function computeDemographicsViaEsri(
     };
   });
 
+  const esriExtras: EsriExtras[] = sortedRings.map((_, i) => {
+    const a = features[i]?.attributes ?? {};
+    const segName = typeof a.THHSNAME === "string" ? a.THHSNAME : null;
+    const segCode = typeof a.THHSCODE === "string" ? a.THHSCODE : null;
+    return {
+      population2030: a.TOTPOP_FY != null ? Math.round(num(a.TOTPOP_FY)) : null,
+      popGrowthPct: a.POPGRWCYFY != null ? Number(a.POPGRWCYFY) : null,
+      incomeGrowthPct: a.MHIGRWCYFY != null ? Number(a.MHIGRWCYFY) : null,
+      tapestrySegmentName: segName && segName.trim() ? segName : null,
+      tapestrySegmentCode: segCode && segCode.trim() ? segCode : null,
+    };
+  });
+
   const result: DemographicsResult = {
     rings,
     meta: {
-      acsRelease: "Esri GeoEnrichment (2025 current-year estimates)",
-      acsYears: "Current year + Esri forecasts",
+      acsRelease: "Esri GeoEnrichment (2025 current-year + 2030 forecasts)",
+      acsYears: "2025 estimates + 5-yr forecast",
       tractsConsidered: 0,
-      note: "ESRI GeoEnrichment with true areal apportionment (tracts contribute proportionally to overlap area). Variables are current-year Esri estimates with proprietary forecasts, not raw ACS 5-year. More accurate than tract-centroid aggregation for ring boundary effects.",
+      note: "ESRI GeoEnrichment with true areal apportionment (tracts contribute proportionally to overlap area). Variables are current-year Esri estimates with proprietary forecasts and Tapestry psychographic segmentation. More accurate than tract-centroid aggregation for ring boundary effects.",
     },
+    esriExtras,
   };
 
   memCache.set(key, { result, expiresAt: Date.now() + CACHE_TTL_MS });
