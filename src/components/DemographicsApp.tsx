@@ -44,15 +44,18 @@ interface Props {
   initialLat?: number;
   initialLon?: number;
   initialRings?: number[];
+  initialSource?: "census" | "esri";
 }
 
 const DEFAULT_RINGS = [1, 3, 5];
+type DataSource = "census" | "esri";
 
 export function DemographicsApp({
   initialAddress,
   initialLat,
   initialLon,
   initialRings,
+  initialSource,
 }: Props) {
   const [location, setLocation] = useState<GeocodeResult | null>(
     initialAddress && initialLat != null && initialLon != null
@@ -62,39 +65,50 @@ export function DemographicsApp({
   const [rings, setRings] = useState<number[]>(
     initialRings && initialRings.length === 3 ? initialRings : DEFAULT_RINGS
   );
+  const [source, setSource] = useState<DataSource>(initialSource ?? "census");
   const [data, setData] = useState<DemographicsResult | null>(null);
+  const [activeSource, setActiveSource] = useState<DataSource>("census");
   const [loading, setLoading] = useState(false);
   const [loadingCaption, setLoadingCaption] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
-  // Fetch demographics whenever address or rings change.
+  // Fetch demographics whenever address, rings, or source change.
   useEffect(() => {
     if (!location) return;
     let cancelled = false;
     setLoading(true);
-    setLoadingCaption("Locating tracts within ring radius…");
+    setLoadingCaption(
+      source === "esri"
+        ? "Calling ESRI GeoEnrichment (~33 credits)…"
+        : "Locating tracts within ring radius…"
+    );
     setError(null);
     const ringsParam = rings.join(",");
-    // Soft caption progression so the user knows it's working.
     const t1 = window.setTimeout(() => {
-      if (!cancelled) setLoadingCaption("Pulling Census ACS data…");
+      if (!cancelled && source === "census")
+        setLoadingCaption("Pulling Census ACS data…");
     }, 700);
     const t2 = window.setTimeout(() => {
-      if (!cancelled)
+      if (!cancelled && source === "census")
         setLoadingCaption(
           "Aggregating tract-level estimates across each ring…"
         );
     }, 2200);
+    const sourceParam = source === "esri" ? "&source=esri" : "";
     fetch(
-      `/api/demographics?lat=${location.lat}&lon=${location.lon}&rings=${ringsParam}`
+      `/api/demographics?lat=${location.lat}&lon=${location.lon}&rings=${ringsParam}${sourceParam}`
     )
       .then((r) => r.json())
       .then((json) => {
         if (cancelled) return;
         if (json.success) {
           setData(json.data);
+          setActiveSource(json.source ?? "census");
+          if (json.esriError) {
+            setToast(`ESRI failed — using Census fallback`);
+          }
         } else {
           setError(json.error ?? "Failed to load demographics");
           setData(null);
@@ -114,7 +128,7 @@ export function DemographicsApp({
       clearTimeout(t1);
       clearTimeout(t2);
     };
-  }, [location, rings]);
+  }, [location, rings, source]);
 
   // Sync URL with selection.
   useEffect(() => {
@@ -125,8 +139,9 @@ export function DemographicsApp({
       lon: String(location.lon),
       rings: rings.join(","),
     });
+    if (source === "esri") params.set("source", "esri");
     window.history.replaceState({}, "", `?${params.toString()}`);
-  }, [location, rings]);
+  }, [location, rings, source]);
 
   // Auto-dismiss toast.
   useEffect(() => {
@@ -421,6 +436,45 @@ export function DemographicsApp({
 
             {/* Stats */}
             <div className="lg:col-span-3">
+              {/* Data source switcher */}
+              {hasLocation && (
+                <div className="mb-3 flex items-center justify-between gap-4 px-1">
+                  <div className="flex items-center gap-2">
+                    <span className="csh-eyebrow text-csh-ink-soft">Source</span>
+                    <button
+                      onClick={() => setSource("census")}
+                      disabled={loading || source === "census"}
+                      className={`px-3 py-1.5 text-xs uppercase tracking-wider border transition-colors disabled:cursor-default ${
+                        source === "census"
+                          ? "bg-csh-navy text-csh-cream border-csh-navy"
+                          : "bg-white text-csh-ink hover:border-csh-navy border-csh-line"
+                      }`}
+                      style={{ letterSpacing: "0.08em" }}
+                      title="Free — US Census ACS 2024 5-year, tract-centroid aggregation"
+                    >
+                      Census · Free
+                    </button>
+                    <button
+                      onClick={() => setSource("esri")}
+                      disabled={loading || source === "esri"}
+                      className={`px-3 py-1.5 text-xs uppercase tracking-wider border transition-colors disabled:cursor-default ${
+                        source === "esri"
+                          ? "bg-csh-gold text-csh-ink-soft-white border-csh-gold text-csh-ink"
+                          : "bg-white text-csh-ink hover:border-csh-gold border-csh-line"
+                      }`}
+                      style={{ letterSpacing: "0.08em" }}
+                      title="ESRI GeoEnrichment — true ring aggregation + current-year forecasts. ~33 credits per query (cached 24h)."
+                    >
+                      ESRI · ~33 cr
+                    </button>
+                  </div>
+                  {activeSource === "esri" && data && (
+                    <div className="text-[11px] text-csh-gold uppercase tracking-wider" style={{ letterSpacing: "0.08em" }}>
+                      ● Premium data active
+                    </div>
+                  )}
+                </div>
+              )}
               <StatsPanel
                 data={data}
                 loading={loading}

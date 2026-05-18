@@ -6,6 +6,7 @@ interface Props {
     lat?: string;
     lon?: string;
     rings?: string;
+    source?: string;
   }>;
 }
 
@@ -25,6 +26,7 @@ export default async function Home({ searchParams }: Props) {
       initialLat={Number.isFinite(lat) ? lat : undefined}
       initialLon={Number.isFinite(lon) ? lon : undefined}
       initialRings={rings && rings.length === 3 ? rings : undefined}
+      initialSource={sp.source === "esri" ? "esri" : "census"}
     />
   );
 }
