@@ -19,8 +19,13 @@ interface Props {
 const MILES_TO_METERS = 1609.344;
 
 const PIN_SIZE = 36;
+// Lucide MapPin viewBox is 24x24. At PIN_SIZE=36:
+//   - Tip (geographic anchor) is at (18, 33)
+//   - Head circle (visible "dot") center is at (18, 15)
 const PIN_ANCHOR_X = 18;
 const PIN_ANCHOR_Y = 33;
+const PIN_HEAD_X = 18;
+const PIN_HEAD_Y = 15;
 
 const PIN_SVG = renderToStaticMarkup(
   <MapPin
@@ -35,9 +40,10 @@ const PIN_SVG = renderToStaticMarkup(
   />
 );
 
+// Pulse is centered on the visible head (the round dot), NOT the tip.
 const PIN_HTML = `
 <div style="position: relative; width: ${PIN_SIZE}px; height: ${PIN_SIZE}px;">
-  <div style="position: absolute; left: ${PIN_ANCHOR_X}px; top: ${PIN_ANCHOR_Y}px; transform: translate(-50%, -50%); width: 18px; height: 18px; border-radius: 50%; background: rgba(184, 146, 74, 0.5); pointer-events: none;" class="csh-pin-pulse"></div>
+  <div style="position: absolute; left: ${PIN_HEAD_X}px; top: ${PIN_HEAD_Y}px; transform: translate(-50%, -50%); width: 18px; height: 18px; border-radius: 50%; background: rgba(184, 146, 74, 0.5); pointer-events: none;" class="csh-pin-pulse"></div>
   ${PIN_SVG}
 </div>`;
 
