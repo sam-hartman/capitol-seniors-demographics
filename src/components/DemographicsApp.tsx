@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import { Download, HelpCircle, Printer } from "lucide-react";
+import { Crosshair, Download, HelpCircle, Printer } from "lucide-react";
 import { SearchBar, type GeocodeResult } from "./SearchBar";
 import { StatsPanel } from "./StatsPanel";
 import { Tutorial } from "./Tutorial";
@@ -175,6 +175,50 @@ export function DemographicsApp({
     }
   }
 
+  const [locating, setLocating] = useState(false);
+
+  function onUseMyLocation() {
+    if (!navigator.geolocation) {
+      setToast("Geolocation not supported in this browser");
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+        // Drop the pin immediately so the user sees it worked.
+        setLocation({
+          lat,
+          lon,
+          label: `Locating… ${lat.toFixed(4)}, ${lon.toFixed(4)}`,
+        });
+        try {
+          const res = await fetch(`/api/reverse-geocode?lat=${lat}&lon=${lon}`);
+          const json = await res.json();
+          if (json.success && json.data?.label) {
+            setLocation({ lat, lon, label: json.data.label });
+          }
+        } catch {
+          // keep the optimistic label
+        } finally {
+          setLocating(false);
+        }
+      },
+      (err) => {
+        setLocating(false);
+        if (err.code === err.PERMISSION_DENIED) {
+          setToast("Location permission denied");
+        } else if (err.code === err.POSITION_UNAVAILABLE) {
+          setToast("Location unavailable");
+        } else {
+          setToast("Couldn't get your location");
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 }
+    );
+  }
+
   const ringsChanged = useMemo(
     () =>
       rings[0] !== DEFAULT_RINGS[0] ||
@@ -288,13 +332,27 @@ export function DemographicsApp({
           {hasLocation ? (
             // Compact bar after selection.
             <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
-              <div className="flex-1 max-w-xl">
-                <SearchBar
-                  onSelect={setLocation}
-                  loading={loading}
-                  size="md"
-                  initialValue=""
-                />
+              <div className="flex-1 max-w-xl flex items-stretch gap-2">
+                <div className="flex-1">
+                  <SearchBar
+                    onSelect={setLocation}
+                    loading={loading}
+                    size="md"
+                    initialValue=""
+                  />
+                </div>
+                <button
+                  onClick={onUseMyLocation}
+                  disabled={locating || loading}
+                  title="Use my current location"
+                  aria-label="Use my current location"
+                  className="inline-flex items-center justify-center px-3 border border-csh-line bg-white text-csh-navy hover:border-csh-navy hover:bg-csh-cream transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Crosshair
+                    className={`w-4 h-4 ${locating ? "animate-pulse" : ""}`}
+                    strokeWidth={1.7}
+                  />
+                </button>
               </div>
               <div className="flex items-center gap-2 flex-wrap text-[13px] text-csh-ink-soft">
                 <span className="csh-eyebrow">Try</span>
@@ -339,7 +397,25 @@ export function DemographicsApp({
                 </p>
               </div>
               <div>
-                <SearchBar onSelect={setLocation} loading={loading} autoFocus />
+                <div className="flex items-stretch gap-2">
+                  <div className="flex-1">
+                    <SearchBar onSelect={setLocation} loading={loading} autoFocus />
+                  </div>
+                  <button
+                    onClick={onUseMyLocation}
+                    disabled={locating || loading}
+                    title="Use my current location"
+                    aria-label="Use my current location"
+                    className="inline-flex items-center gap-2 px-4 border border-csh-line bg-white text-csh-navy hover:border-csh-navy hover:bg-csh-cream transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-[13px] uppercase tracking-wider"
+                    style={{ letterSpacing: "0.08em" }}
+                  >
+                    <Crosshair
+                      className={`w-4 h-4 ${locating ? "animate-pulse" : ""}`}
+                      strokeWidth={1.7}
+                    />
+                    <span className="hidden sm:inline">My Location</span>
+                  </button>
+                </div>
                 <div className="mt-4 flex flex-wrap gap-x-2 gap-y-1 text-[13px] text-csh-ink-soft items-center">
                   <span className="csh-eyebrow mr-1">Or try</span>
                   {PRESETS.map((p) => (
