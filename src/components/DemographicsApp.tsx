@@ -65,7 +65,9 @@ export function DemographicsApp({
   const [rings, setRings] = useState<number[]>(
     initialRings && initialRings.length === 3 ? initialRings : DEFAULT_RINGS
   );
-  const [source, setSource] = useState<DataSource>(initialSource ?? "census");
+  // Always use ESRI as the user-facing source. Census remains the silent
+  // fallback if ESRI fails (handled server-side in /api/demographics).
+  const [source] = useState<DataSource>("esri");
   const [data, setData] = useState<DemographicsResult | null>(null);
   const [activeSource, setActiveSource] = useState<DataSource>("census");
   const [loading, setLoading] = useState(false);
@@ -436,43 +438,25 @@ export function DemographicsApp({
 
             {/* Stats */}
             <div className="lg:col-span-3">
-              {/* Data source switcher */}
+              {/* Source indicator (read-only) */}
               {hasLocation && (
-                <div className="mb-3 flex items-center justify-between gap-4 px-1">
-                  <div className="flex items-center gap-2">
-                    <span className="csh-eyebrow text-csh-ink-soft">Source</span>
-                    <button
-                      onClick={() => setSource("census")}
-                      disabled={loading || source === "census"}
-                      className={`px-3 py-1.5 text-xs uppercase tracking-wider border transition-colors disabled:cursor-default ${
-                        source === "census"
-                          ? "bg-csh-navy text-csh-cream border-csh-navy"
-                          : "bg-white text-csh-ink hover:border-csh-navy border-csh-line"
-                      }`}
-                      style={{ letterSpacing: "0.08em" }}
-                      title="Free — US Census ACS 2024 5-year, tract-centroid aggregation"
-                    >
-                      Census · Free
-                    </button>
-                    <button
-                      onClick={() => setSource("esri")}
-                      disabled={loading || source === "esri"}
-                      className={`px-3 py-1.5 text-xs uppercase tracking-wider border transition-colors disabled:cursor-default ${
-                        source === "esri"
-                          ? "bg-csh-gold text-csh-ink-soft-white border-csh-gold text-csh-ink"
-                          : "bg-white text-csh-ink hover:border-csh-gold border-csh-line"
-                      }`}
-                      style={{ letterSpacing: "0.08em" }}
-                      title="ESRI GeoEnrichment — true ring aggregation + current-year forecasts. ~33 credits per query (cached 24h)."
-                    >
-                      ESRI · ~33 cr
-                    </button>
+                <div className="mb-3 flex items-center justify-end px-1">
+                  <div
+                    className="text-[11px] text-csh-gold uppercase tracking-wider flex items-center gap-1.5"
+                    style={{ letterSpacing: "0.08em" }}
+                  >
+                    {activeSource === "esri" ? (
+                      <>
+                        <span className="w-1.5 h-1.5 rounded-full bg-csh-gold inline-block" />
+                        Esri GeoEnrichment
+                      </>
+                    ) : activeSource === "census" ? (
+                      <>
+                        <span className="w-1.5 h-1.5 rounded-full bg-csh-ink-soft inline-block" />
+                        Census fallback (Esri unavailable)
+                      </>
+                    ) : null}
                   </div>
-                  {activeSource === "esri" && data && (
-                    <div className="text-[11px] text-csh-gold uppercase tracking-wider" style={{ letterSpacing: "0.08em" }}>
-                      ● Premium data active
-                    </div>
-                  )}
                 </div>
               )}
               <StatsPanel
