@@ -302,6 +302,66 @@ export function StatsPanel({
             </div>
           )}
 
+          {/* Income-qualified caregivers (45-64, HH income ≥ $75K) */}
+          {data.esriExtras.some((x) => x.qualifiedCaregivers45to64 != null) && (
+            <div className="grid gap-4 px-6 py-4 items-center border-t border-csh-line/50" style={gridStyle}>
+              <div className="w-10 h-10 flex items-center justify-center rounded-full bg-csh-gold/15 text-csh-gold">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6"><circle cx="9" cy="9" r="3"/><path d="M3 19c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M14 18c0-2.5 1.5-4 3-4s4 1.5 4 4"/></svg>
+              </div>
+              <div>
+                <div className="text-csh-ink font-semibold leading-tight text-[15px]">
+                  Qualified Caregivers Age 45–64
+                </div>
+                <div className="text-csh-ink-soft text-[13px] mt-0.5">
+                  HH income ≥ $75K (AL payor threshold)
+                </div>
+              </div>
+              {data.esriExtras.map((x, i) => {
+                const total = data.rings[i]?.totalHouseholds45to64 ?? 0;
+                const pct =
+                  total > 0 && x.qualifiedCaregivers45to64 != null
+                    ? (x.qualifiedCaregivers45to64 / total) * 100
+                    : null;
+                return (
+                  <div key={`qcg-${i}`} className="text-right">
+                    <div className="csh-display text-2xl text-csh-navy tabular-nums">
+                      {x.qualifiedCaregivers45to64?.toLocaleString() ?? "—"}
+                    </div>
+                    {pct != null && (
+                      <div className="text-[11px] text-csh-ink-soft tabular-nums">
+                        {pct.toFixed(0)}% of all
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Income-qualified senior households 75+ (HH income ≥ $50K) */}
+          {data.esriExtras.some((x) => x.qualifiedSeniorHH75plus != null) && (
+            <div className="grid gap-4 px-6 py-4 items-center border-t border-csh-line/50" style={gridStyle}>
+              <div className="w-10 h-10 flex items-center justify-center rounded-full bg-csh-gold/15 text-csh-gold">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M12 2v20M5 9h14M5 9l3 13M19 9l-3 13"/></svg>
+              </div>
+              <div>
+                <div className="text-csh-ink font-semibold leading-tight text-[15px]">
+                  Qualified Senior Households 75+
+                </div>
+                <div className="text-csh-ink-soft text-[13px] mt-0.5">
+                  HH income ≥ $50K (IL payor threshold)
+                </div>
+              </div>
+              {data.esriExtras.map((x, i) => (
+                <div key={`qsr-${i}`} className="text-right">
+                  <div className="csh-display text-2xl text-csh-navy tabular-nums">
+                    {x.qualifiedSeniorHH75plus?.toLocaleString() ?? "—"}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Dominant Tapestry segment */}
           {data.esriExtras.some((x) => x.tapestrySegmentName) && (
             <div className="grid gap-4 px-6 py-4 items-center border-t border-csh-line/50" style={gridStyle}>

@@ -247,6 +247,10 @@ export interface EsriExtras {
   incomeGrowthPct: number | null;
   tapestrySegmentName: string | null;
   tapestrySegmentCode: string | null;
+  // Income-qualified counts. Caregivers threshold = HH income >=$75K (AL
+  // payor profile). Senior threshold = HH income >=$50K (IL payor profile).
+  qualifiedCaregivers45to64: number | null;
+  qualifiedSeniorHH75plus: number | null;
 }
 
 export interface DemographicsResult {

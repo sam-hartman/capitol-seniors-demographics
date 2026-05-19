@@ -15,29 +15,44 @@ const ENRICH_URL =
   "https://geoenrich.arcgis.com/arcgis/rest/services/World/geoenrichmentserver/Geoenrichment/enrich";
 
 // ESRI variable IDs — verified via dataCollections metadata.
-// ~16 vars × 3 rings = ~48 credits per call. Cached 24h.
+// ~29 vars × 3 rings = ~87 credits per call. Cached 24h.
 const ANALYSIS_VARS = [
   // KeyUSFacts — current-year Esri estimates
   "KeyUSFacts.TOTPOP_CY",
   "KeyUSFacts.MEDHINC_CY",
   "KeyUSFacts.MEDVAL_CY",
   // 5-year forecasts (2030)
-  "KeyUSFacts.TOTPOP_FY", // 2030 population
-  "KeyUSFacts.POPGRWCYFY", // 2025-2030 pop growth rate %
-  "KeyUSFacts.MHIGRWCYFY", // 2025-2030 median HH income growth rate %
-  // incomebyage — household counts by age of householder
+  "KeyUSFacts.TOTPOP_FY",
+  "KeyUSFacts.POPGRWCYFY",
+  "KeyUSFacts.MHIGRWCYFY",
+  // Total caregivers 45-64
   "incomebyage.IA45BASECY",
   "incomebyage.IA55BASECY",
-  // Age — population 75+
+  // Income-qualified caregivers 45-64 (HH income >=$75K)
+  "incomebyage.A45I75_CY",
+  "incomebyage.A45I100_CY",
+  "incomebyage.A45I150_CY",
+  "incomebyage.A45I200_CY",
+  "incomebyage.A55I75_CY",
+  "incomebyage.A55I100_CY",
+  "incomebyage.A55I150_CY",
+  "incomebyage.A55I200_CY",
+  // Age — total seniors 75+
   "Age.MALE75",
   "Age.MALE80",
   "Age.MALE85",
   "Age.FEM75",
   "Age.FEM80",
   "Age.FEM85",
-  // Tapestry — pre-aggregated dominant segment
-  "TapestryHouseholds.THHSNAME", // segment name (e.g. "Silver & Gold")
-  "TapestryHouseholds.THHSCODE", // segment code (e.g. "9A")
+  // Income-qualified senior HHs 75+ (HH income >=$50K; industry IL threshold)
+  "incomebyage.A75I50_CY",
+  "incomebyage.A75I75_CY",
+  "incomebyage.A75I100_CY",
+  "incomebyage.A75I150_CY",
+  "incomebyage.A75I200_CY",
+  // Tapestry
+  "TapestryHouseholds.THHSNAME",
+  "TapestryHouseholds.THHSCODE",
 ];
 
 // Server-side cache, lifetime = process lifetime + Next.js revalidate.
@@ -167,12 +182,29 @@ export async function computeDemographicsViaEsri(
     const a = features[i]?.attributes ?? {};
     const segName = typeof a.THHSNAME === "string" ? a.THHSNAME : null;
     const segCode = typeof a.THHSCODE === "string" ? a.THHSCODE : null;
+    const qualCaregivers =
+      num(a.A45I75_CY) +
+      num(a.A45I100_CY) +
+      num(a.A45I150_CY) +
+      num(a.A45I200_CY) +
+      num(a.A55I75_CY) +
+      num(a.A55I100_CY) +
+      num(a.A55I150_CY) +
+      num(a.A55I200_CY);
+    const qualSeniors =
+      num(a.A75I50_CY) +
+      num(a.A75I75_CY) +
+      num(a.A75I100_CY) +
+      num(a.A75I150_CY) +
+      num(a.A75I200_CY);
     return {
       population2030: a.TOTPOP_FY != null ? Math.round(num(a.TOTPOP_FY)) : null,
       popGrowthPct: a.POPGRWCYFY != null ? Number(a.POPGRWCYFY) : null,
       incomeGrowthPct: a.MHIGRWCYFY != null ? Number(a.MHIGRWCYFY) : null,
       tapestrySegmentName: segName && segName.trim() ? segName : null,
       tapestrySegmentCode: segCode && segCode.trim() ? segCode : null,
+      qualifiedCaregivers45to64: qualCaregivers > 0 ? Math.round(qualCaregivers) : null,
+      qualifiedSeniorHH75plus: qualSeniors > 0 ? Math.round(qualSeniors) : null,
     };
   });
 
