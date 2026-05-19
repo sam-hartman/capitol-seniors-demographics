@@ -224,20 +224,11 @@ export function StatsPanel({
             })}
       </div>
 
-      {/* ESRI premium extras — only when source is ESRI */}
+      {/* Esri-only extra rows (forecasts, qualified counts, Tapestry).
+          Rendered seamlessly inline after the 5 core metrics — no section
+          divider, since all data comes from the same source. */}
       {data && data.esriExtras && !loading && (
         <>
-          <div
-            className="grid gap-4 px-6 py-3 border-t border-csh-line bg-csh-gold/[0.08] items-center"
-            style={gridStyle}
-          >
-            <div className="w-10" />
-            <div className="csh-eyebrow text-csh-gold">Premium · ESRI Only</div>
-            {data.esriExtras.map((_, i) => (
-              <div key={`hdr-${i}`} />
-            ))}
-          </div>
-
           {/* 2030 projected population */}
           <div className="grid gap-4 px-6 py-4 items-center border-t border-csh-line/50" style={gridStyle}>
             <div className="w-10 h-10 flex items-center justify-center rounded-full bg-csh-gold/15 text-csh-gold">

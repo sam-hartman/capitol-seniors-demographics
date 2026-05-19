@@ -440,24 +440,16 @@ export function DemographicsApp({
 
             {/* Stats */}
             <div className="lg:col-span-3">
-              {/* Source indicator (read-only) */}
-              {hasLocation && (
+              {/* Show a discreet warning ONLY if Esri failed and we degraded
+                  to Census fallback — otherwise no source chrome at all. */}
+              {hasLocation && activeSource === "census" && (
                 <div className="mb-3 flex items-center justify-end px-1">
                   <div
-                    className="text-[11px] text-csh-gold uppercase tracking-wider flex items-center gap-1.5"
+                    className="text-[11px] text-csh-ink-soft uppercase tracking-wider flex items-center gap-1.5"
                     style={{ letterSpacing: "0.08em" }}
                   >
-                    {activeSource === "esri" ? (
-                      <>
-                        <span className="w-1.5 h-1.5 rounded-full bg-csh-gold inline-block" />
-                        Esri GeoEnrichment
-                      </>
-                    ) : activeSource === "census" ? (
-                      <>
-                        <span className="w-1.5 h-1.5 rounded-full bg-csh-ink-soft inline-block" />
-                        Census fallback (Esri unavailable)
-                      </>
-                    ) : null}
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" />
+                    Esri unavailable — using fallback data
                   </div>
                 </div>
               )}
