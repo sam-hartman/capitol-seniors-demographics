@@ -369,9 +369,11 @@ export function DemographicsApp({
             </div>
           )}
 
-          <div className="grid lg:grid-cols-5 gap-6">
-            {/* Map */}
-            <div className="lg:col-span-2 border border-csh-line bg-white overflow-hidden">
+          <div className="grid lg:grid-cols-5 gap-6 items-start">
+            {/* Map — sticky on large screens so it stays visible while
+                the user scrolls the stats panel. Top offset accounts for
+                the sticky page header (~64px) + a small gap. */}
+            <div className="lg:col-span-2 border border-csh-line bg-white overflow-hidden lg:sticky lg:top-[72px] print:static">
               <div className="px-5 py-3 border-b border-csh-line flex items-center justify-between bg-csh-cream/40">
                 <div className="csh-eyebrow text-csh-ink">Map</div>
                 {location && (
@@ -496,7 +498,7 @@ export function DemographicsApp({
             Demographic intelligence for Capitol Seniors Housing site selection.
           </div>
           <div className="flex items-center gap-4">
-            <span>US Census ACS · OpenStreetMap · TIGERweb</span>
+            <span>Esri GeoEnrichment · OpenStreetMap · CARTO</span>
           </div>
         </div>
       </footer>
