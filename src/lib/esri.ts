@@ -15,7 +15,7 @@ const ENRICH_URL =
   "https://geoenrich.arcgis.com/arcgis/rest/services/World/geoenrichmentserver/Geoenrichment/enrich";
 
 // ESRI variable IDs — verified via dataCollections metadata.
-// ~29 vars × 3 rings = ~87 credits per call. Cached 24h.
+// ~34 vars × 3 rings = ~102 credits per call. Cached 24h.
 const ANALYSIS_VARS = [
   // KeyUSFacts — current-year Esri estimates
   "KeyUSFacts.TOTPOP_CY",
@@ -50,6 +50,12 @@ const ANALYSIS_VARS = [
   "incomebyage.A75I100_CY",
   "incomebyage.A75I150_CY",
   "incomebyage.A75I200_CY",
+  // Same qualified-senior HHs 75+, 5-year forecast (current vintage: 2031)
+  "incomebyage.A75I50_FY",
+  "incomebyage.A75I75_FY",
+  "incomebyage.A75I100_FY",
+  "incomebyage.A75I150_FY",
+  "incomebyage.A75I200_FY",
   // Tapestry
   "TapestryHouseholds.THHSNAME",
   "TapestryHouseholds.THHSCODE",
@@ -197,6 +203,12 @@ export async function computeDemographicsViaEsri(
       num(a.A75I100_CY) +
       num(a.A75I150_CY) +
       num(a.A75I200_CY);
+    const qualSeniorsForecast =
+      num(a.A75I50_FY) +
+      num(a.A75I75_FY) +
+      num(a.A75I100_FY) +
+      num(a.A75I150_FY) +
+      num(a.A75I200_FY);
     return {
       population2030: a.TOTPOP_FY != null ? Math.round(num(a.TOTPOP_FY)) : null,
       popGrowthPct: a.POPGRWCYFY != null ? Number(a.POPGRWCYFY) : null,
@@ -205,14 +217,16 @@ export async function computeDemographicsViaEsri(
       tapestrySegmentCode: segCode && segCode.trim() ? segCode : null,
       qualifiedCaregivers45to64: qualCaregivers > 0 ? Math.round(qualCaregivers) : null,
       qualifiedSeniorHH75plus: qualSeniors > 0 ? Math.round(qualSeniors) : null,
+      qualifiedSeniorHH75plusForecast:
+        qualSeniorsForecast > 0 ? Math.round(qualSeniorsForecast) : null,
     };
   });
 
   const result: DemographicsResult = {
     rings,
     meta: {
-      acsRelease: "Esri GeoEnrichment (2025 current-year + 2030 forecasts)",
-      acsYears: "2025 estimates + 5-yr forecast",
+      acsRelease: "Esri GeoEnrichment (2026 current-year + 2031 forecasts)",
+      acsYears: "2026 estimates + 5-yr forecast",
       tractsConsidered: 0,
       note: "ESRI GeoEnrichment with true areal apportionment (tracts contribute proportionally to overlap area). Variables are current-year Esri estimates with proprietary forecasts and Tapestry psychographic segmentation. More accurate than tract-centroid aggregation for ring boundary effects.",
     },

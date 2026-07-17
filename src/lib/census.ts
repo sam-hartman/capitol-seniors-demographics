@@ -251,6 +251,9 @@ export interface EsriExtras {
   // payor profile). Senior threshold = HH income >=$50K (IL payor profile).
   qualifiedCaregivers45to64: number | null;
   qualifiedSeniorHH75plus: number | null;
+  // Same IL-qualified senior HH definition (75+, HH income >=$50K), projected
+  // to the Esri 5-year forecast horizon (current vintage: 2031).
+  qualifiedSeniorHH75plusForecast: number | null;
 }
 
 export interface DemographicsResult {

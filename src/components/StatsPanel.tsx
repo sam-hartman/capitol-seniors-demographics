@@ -229,14 +229,14 @@ export function StatsPanel({
           divider, since all data comes from the same source. */}
       {data && data.esriExtras && !loading && (
         <>
-          {/* 2030 projected population */}
+          {/* 2031 projected population */}
           <div className="grid gap-4 px-6 py-4 items-center border-t border-csh-line/50" style={gridStyle}>
             <div className="w-10 h-10 flex items-center justify-center rounded-full bg-csh-gold/15 text-csh-gold">
               <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M3 17l6-6 4 4 8-8M14 7h7v7"/></svg>
             </div>
             <div>
               <div className="text-csh-ink font-semibold leading-tight text-[15px]">
-                2030 Population
+                2031 Population
               </div>
               <div className="text-csh-ink-soft text-[13px] mt-0.5">
                 Esri 5-year forecast
@@ -269,7 +269,7 @@ export function StatsPanel({
               </div>
               <div>
                 <div className="text-csh-ink font-semibold leading-tight text-[15px]">
-                  Income Growth (2025–2030)
+                  Income Growth (2026–2031)
                 </div>
                 <div className="text-csh-ink-soft text-[13px] mt-0.5">
                   Median HH income, annualized
@@ -350,6 +350,48 @@ export function StatsPanel({
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Income-qualified senior households 75+, projected to 2031 (Esri 5-yr forecast) */}
+          {data.esriExtras.some((x) => x.qualifiedSeniorHH75plusForecast != null) && (
+            <div className="grid gap-4 px-6 py-4 items-center border-t border-csh-line/50" style={gridStyle}>
+              <div className="w-10 h-10 flex items-center justify-center rounded-full bg-csh-gold/15 text-csh-gold">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M3 21h18M7 21v-6M12 21V9m5 12V6"/><path d="M14 6l3-3 3 3"/></svg>
+              </div>
+              <div>
+                <div className="text-csh-ink font-semibold leading-tight text-[15px]">
+                  Qualified Seniors 75+ (2031)
+                </div>
+                <div className="text-csh-ink-soft text-[13px] mt-0.5">
+                  HH income ≥ $50K · Esri 5-year projection
+                </div>
+              </div>
+              {data.esriExtras.map((x, i) => {
+                const base = x.qualifiedSeniorHH75plus;
+                const fc = x.qualifiedSeniorHH75plusForecast;
+                const pct =
+                  base != null && base > 0 && fc != null
+                    ? ((fc - base) / base) * 100
+                    : null;
+                return (
+                  <div key={`qsr-fc-${i}`} className="text-right">
+                    <div className="csh-display text-2xl text-csh-navy tabular-nums">
+                      {fc != null ? fc.toLocaleString() : "—"}
+                    </div>
+                    {pct != null && (
+                      <div
+                        className={`text-[11px] tabular-nums ${
+                          pct >= 0 ? "text-emerald-700" : "text-red-700"
+                        }`}
+                      >
+                        {pct >= 0 ? "+" : ""}
+                        {pct.toFixed(1)}% vs 2026
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
 
